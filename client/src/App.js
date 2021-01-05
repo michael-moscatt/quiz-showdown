@@ -1,4 +1,3 @@
-import './App.css';
 import {SocketContext} from './socket-context';
 import * as io from 'socket.io-client';
 import React from 'react';
@@ -14,7 +13,9 @@ class App extends React.Component {
       mode: 'menu',
       room: ''
     };
+  }
 
+  componentDidMount(){
     socket.on('host-response', 
       (roomName) => { 
         this.setState({

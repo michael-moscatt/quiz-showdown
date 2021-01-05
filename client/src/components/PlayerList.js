@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import { SocketContext } from '../socket-context';
 import PropTypes from 'prop-types';
-import { withStyles } from '@material-ui/core/styles';
 
 class PlayerList extends Component {
   constructor(props) {
@@ -9,7 +8,6 @@ class PlayerList extends Component {
     this.state = {
       players: []
     }
-
   }
 
   render() {
@@ -24,4 +22,4 @@ PlayerList.propTypes = {
   classes: PropTypes.object.isRequired,
 };
 
-export default withStyles()(PlayerList);
+export default PlayerList;

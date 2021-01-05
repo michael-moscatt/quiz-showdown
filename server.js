@@ -22,17 +22,21 @@ io.on('connection', function (socket) {
         console.log("Disconnection");
     });
 
-    socket.on('host', function() {
-        var roomName = randomLetters(6)
+    socket.on('host', function(username) {
+        var roomName = randomLetters(6);
         socket.emit('host-response', roomName);
-        console.log("Room %s now being hosted", roomName);
-        rooms[roomName] = Room(user, roomName);
+        rooms[roomName] = new Room(user, roomName);
+        user.name = username;
         joinRoom(user, roomName);
+        console.log(username);
+        console.log("Room %s now being hosted by %s", roomName, username);
     });
 
     // Check if user is able to join the room, if so then add them
-    socket.on('join', function(roomName) {
+    socket.on('join', function(joinObj) {
         var response;
+        var roomName = joinObj.roomName;
+        var username = joinObj.username;
         if(!(roomName in rooms)){
             response = "invalid";
         } else if(!room['state'] == 'lobby'){
@@ -42,6 +46,7 @@ io.on('connection', function (socket) {
         } else if(user in rooms[roomName]['Users']){
             reponse = "already joined";
         } else {
+            user.name = username;
             response = "ok";
             joinRoom(user, roomName);
         }
