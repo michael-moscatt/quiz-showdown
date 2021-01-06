@@ -6,6 +6,7 @@ import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
 import { withStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
+import JoinDialog from './JoinDialog.js';
 
 const styles = theme => ({
   button: {
@@ -18,12 +19,11 @@ class MainMenu extends Component {
     super(props);
     this.state = {
       username: "",
-      hostDialogOpen: false
+      joinDialogOpen: false
     }
-    this.handleHostDialogOpen = this.handleHostDialogOpen.bind(this);
-    this.handleHostDialogClose = this.handleHostDialogClose.bind(this);
+    this.handleJoinDialogOpen = this.handleJoinDialogOpen.bind(this);
+    this.handleJoinDialogClose = this.handleJoinDialogClose.bind(this);
     this.handleHostClick = this.handleHostClick.bind(this);
-    this.handleJoinClick = this.handleJoinClick.bind(this);
     this.handleUsernameChange = this.handleUsernameChange.bind(this);
   }
 
@@ -33,24 +33,20 @@ class MainMenu extends Component {
     });
   }
 
-  handleHostDialogOpen() {
+  handleJoinDialogOpen() {
     this.setState({
-      hostDialogOpen: true
+      joinDialogOpen: true
     });
   }
 
-  handleHostDialogClose() {
+  handleJoinDialogClose() {
     this.setState({
-      hostDialogOpen: false
+      joinDialogOpen: false
     });
   }
 
   handleHostClick() {
     this.context.emit('host', this.state.username);
-  }
-
-  handleJoinClick() {
-    console.log("Join");
   }
 
   render() {
@@ -59,17 +55,21 @@ class MainMenu extends Component {
       <Box mt={5}>
         <Grid container spacing={1}>
           <Grid item align="center" xs={12}>
-            <TextField className={classes.button} id="username" label="Name" variant="filled" margin="dense" autoComplete="off" onChange={this.handleUsernameChange} />
+            <TextField className={classes.button} id="username" label="Name" variant="filled" 
+              margin="dense" autoComplete="off" onChange={this.handleUsernameChange} inputProps = {{maxLength:16}}/>
           </Grid>
           <Grid item align="center" xs={12}>
-            <Button className={classes.button} size="large" color="primary" variant="contained" onClick={this.handleHostClick}>
+            <Button className={classes.button} size="large" color="primary" variant="contained" 
+              onClick={this.handleHostClick}>
               Host
             </Button>
           </Grid>
           <Grid item align="center" xs={12}>
-            <Button className={classes.button} size="large" color="primary" variant="contained" onClick={this.handleJoinClick}>
+            <Button className={classes.button} size="large" color="primary" variant="contained" 
+              onClick={this.handleJoinDialogOpen}>
               Join
             </Button>
+            <JoinDialog open={this.state.joinDialogOpen} handleClose={this.handleJoinDialogClose} username={this.state.username}/>
           </Grid>
           <Grid item align="center" xs={12}>
             <Button className={classes.button} size="large" color="primary" variant="contained">

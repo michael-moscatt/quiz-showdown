@@ -11,17 +11,29 @@ class App extends React.Component {
     super();
     this.state = {
       mode: 'menu',
-      room: ''
     };
   }
 
   componentDidMount(){
     socket.on('host-response', 
-      (roomName) => { 
-        this.setState({
-          mode: 'lobby',
-          roomName: roomName
-        });
+      (response) => { 
+        if(response === "ok"){
+          this.setState({
+            mode: 'lobby'
+          });
+        }
+      }
+    );
+
+    socket.on('join-response',
+      (response) => {
+        if(response === "ok") {
+          this.setState({
+            mode: 'lobby'
+          });
+        } else {
+          console.log(response);
+        }
       });
   }
 
@@ -30,7 +42,7 @@ class App extends React.Component {
     if(this.state.mode === 'menu'){
       view = <MainMenu />;
     } else if(this.state.mode === 'lobby'){
-      view = <Lobby roomName={this.state.roomName} />;
+      view = <Lobby />;
     }
     return (
       <SocketContext.Provider value={socket}>
