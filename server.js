@@ -7,7 +7,13 @@ const port = process.env.PORT || 5000;
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 
-var rooms = {} // roomName -> room
+// Misc
+var fs = require('fs');
+var util = require('util');
+
+var dataObj;
+var matchInfo = {}; // seasonNumber -> [matchInfoObj]
+var rooms = {}; // roomName -> room
 const ROOM_LIMIT = 4;
 
 http.listen(port, function() {
@@ -87,6 +93,24 @@ io.on('connection', function (socket) {
     });
 });
 
+// Load in data from file
+fs.readFile('data/data.json', 'utf8', function (err, data) {
+  if(err){
+     throw Error('Could not load data from file') 
+  }
+  dataObj = JSON.parse(data);
+});
+
+// Attempt to pull out season, id, and date from all matches
+var attemptRead = setInterval(tryToRead, 100);
+
+function tryToRead(){
+    if('35' in dataObj){
+        clearInterval(attemptRead);
+        pullMatchInfo();
+    }
+}
+
 function User(socket){
     this.socket = socket;
     this.name = "";
@@ -97,6 +121,21 @@ function Room(user, roomName){
     this.host = user;
     this.name = roomName;
     this.state = 'lobby';
+}
+
+// Creates the matchInfo object for host to choose a match
+function pullMatchInfo(){
+    Object.keys(dataObj).forEach(function(season) {
+        var matches = [];
+        dataObj[season].forEach(function(match) {
+            matches.push({
+                "id": match["id"],
+                "date": match["date"]
+            })
+        });
+        matchInfo[season] = matches;
+    });
+    console.log(util.inspect(matchInfo));
 }
 
 // Informs all players in the room that the user has joined
