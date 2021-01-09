@@ -91,6 +91,10 @@ io.on('connection', function (socket) {
             startGame(room);
         }
     });
+
+    socket.on('request-matches-list', () => {
+        socket.emit('matches-list-response', matchInfo);
+    });
 });
 
 // Load in data from file
@@ -135,7 +139,6 @@ function pullMatchInfo(){
         });
         matchInfo[season] = matches;
     });
-    console.log(util.inspect(matchInfo));
 }
 
 // Informs all players in the room that the user has joined
