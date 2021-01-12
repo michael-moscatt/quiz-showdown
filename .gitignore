@@ -31,3 +31,4 @@ yarn-error.log*
 client/.eslintcache
 scripts/scraper2.py
 scripts/test.py
+client/debug.log

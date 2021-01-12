@@ -3,6 +3,8 @@ import * as io from 'socket.io-client';
 import React from 'react';
 import MainMenu from './components/MainMenu.js';
 import Lobby from './components/Lobby.js';
+import SiteName from './components/SiteName.js';
+import Grid from '@material-ui/core/Grid';
 
 const socket = io();
 
@@ -46,7 +48,14 @@ class App extends React.Component {
     }
     return (
       <SocketContext.Provider value={socket}>
-        {view}
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <SiteName />
+          </Grid>
+          <Grid item xs={12}>
+            {view}
+          </Grid>
+        </Grid>
       </SocketContext.Provider>
     );
   }

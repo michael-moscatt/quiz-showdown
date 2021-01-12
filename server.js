@@ -85,15 +85,57 @@ io.on('connection', function (socket) {
         }
     });
 
-    socket.on('start-game', (request) => {
+    socket.on('start-game', () => {
         if('host' in room && room.host == user && room.state === 'lobby'){
-            room.settings.interrupt = request.interrupt;
             startGame(room);
         }
     });
 
     socket.on('request-matches-list', () => {
         socket.emit('matches-list-response', matchInfo);
+    });
+
+    socket.on('setting-interrupt-change', (request) => {
+        if('host' in room && room.host == user && room.state === 'lobby'){
+            room.settings.interrupt = request;
+            socket.to(room.name).emit('setting-interrupt-change', request);
+        }
+    });
+
+    socket.on('setting-override-change', (request) => {
+        if('host' in room && room.host == user && room.state === 'lobby'){
+            room.settings.override = request;
+            socket.to(room.name).emit('setting-override-change', request);
+        }
+    });
+
+    socket.on('setting-season-change', (request) => {
+        if ('host' in room && room.host == user && room.state === 'lobby'
+            && request in dataObj) {
+            room.game.season = request;
+            socket.to(room.name).emit('setting-season-change', request);
+
+        }
+    });
+
+    socket.on('setting-match-change', (request) => {
+        if('host' in room && room.host == user && room.state === 'lobby'
+            && 'season' in room.game && room.game.season in dataObj){
+            // Ensure match exists in data object
+            if (dataObj[room.game.season].reduce((acc, match) => {
+                return acc || match.id == request;
+            }, false)){
+                room.game.match = request;
+                socket.to(room.name).emit('setting-match-change', request);
+            }
+        }
+    });
+
+    socket.on('start-game-request', () => {
+        if('host' in room && room.host == user && room.state === 'lobby'
+            && 'match' in room.game){
+            console.log("Game started in room" + room.name);
+        }
     });
 });
 
@@ -121,10 +163,15 @@ function User(socket){
 }
 
 function Room(user, roomName){
+    this.game = {};
     this.users = [];
     this.host = user;
     this.name = roomName;
     this.state = 'lobby';
+    this.settings = {
+        interrupt: false,
+        override: true
+    };
 }
 
 // Creates the matchInfo object for host to choose a match
@@ -132,9 +179,11 @@ function pullMatchInfo(){
     Object.keys(dataObj).forEach(function(season) {
         var matches = [];
         dataObj[season].forEach(function(match) {
+            var iso_date = match["date"];
+            var american_date = iso_date.slice(5) + '-' + iso_date.slice(0, 4);
             matches.push({
                 "id": match["id"],
-                "date": match["date"]
+                "date": american_date
             })
         });
         matchInfo[season] = matches;

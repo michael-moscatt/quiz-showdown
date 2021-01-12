@@ -1,34 +1,24 @@
 import React, { Component } from 'react';
-import Box from '@material-ui/core/Box';
-import PlayerList from './PlayerList.js';
+import Container from '@material-ui/core/Container';
+import LobbyInfo from './LobbyInfo.js';
 import OptionsPanel from './OptionsPanel.js';
 import { SocketContext } from '../socket-context';
+import Grid from '@material-ui/core/Grid';
+import Paper from '@material-ui/core/Paper';
 
 class Lobby extends Component {
-  constructor(props){
-    super(props);
-    this.state = {
-      roomName: ""
-    }
-  }
-
-  componentDidMount(){
-    this.context.on('room-name', 
-      (response) => {
-        this.setState({
-          roomName: response
-        });
-      });
-    this.context.emit('request-room-name');
-  }
-
   render() {
     return (
-      <Box mt={2}>
-        Room Code: {this.state.roomName}
-        <PlayerList />
-        <OptionsPanel />
-      </Box>
+      <Container maxWidth="md">
+        <Grid container spacing={3}>
+          <Grid item xs={8}>
+            <OptionsPanel />
+          </Grid>
+          <Grid item xs={4}>
+            <LobbyInfo />
+          </Grid>
+        </Grid>
+      </Container>
     )
   }
 }

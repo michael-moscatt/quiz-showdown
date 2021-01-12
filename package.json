@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@material-ui/core": "^4.11.2",
+    "@material-ui/icons": "^4.11.2",
     "express": "^4.17.1",
     "fontsource-roboto": "^4.0.0",
     "socket.io": "^3.0.4"
