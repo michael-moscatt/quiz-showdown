@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import { SocketContext } from '../socket-context';
 import Box from '@material-ui/core/Box';
 import List from '@material-ui/core/List';
@@ -13,94 +13,74 @@ import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
 import PersonIcon from '@material-ui/icons/Person';
 import CardContent from '@material-ui/core/CardContent';
 import CardHeader from '@material-ui/core/CardHeader';
-import { withStyles } from '@material-ui/core/styles';
-import PropTypes from 'prop-types';
 import Card from '@material-ui/core/Card';
+import { makeStyles } from "@material-ui/core/styles";
 
-const styles = theme => ({
+const useStyles = makeStyles((theme) => ({
   card: {
     minHeight: 100
   }
-});
+}));
 
-class LobbyInfo extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      players: [],
-      host: "",
-      roomName: ""
-    }
-  }
+function LobbyInfo(){
+  const classes = useStyles();
+  const socket = useContext(SocketContext);
 
-  componentDidMount(){
-    this.context.on('usernames', 
+  const [players, setPlayers] = useState([]);
+  const [host, setHost] = useState('');
+  const [roomName, setRoomName] = useState('');
+
+  const setEventListeners = function(){
+    socket.on('usernames',
       (response) => {
-        this.setState({
-          players: response.users,
-          host: response.hostName
-        });
+        setPlayers(response.users);
+        setHost(response.hostName);
       });
-    this.context.emit('request-usernames');
-    this.context.on('room-name', 
-        (response) => {
-          this.setState({
-            roomName: response
-          });
-        });
-    this.context.emit('request-room-name');
+    socket.emit('request-usernames');
+    socket.on('room-name',
+      (response) => {
+        setRoomName(response);
+      });
+    socket.emit('request-room-name');
   }
+  useEffect(setEventListeners, [socket]);
 
-  render() {
-    const { classes } = this.props;
-    const roomInfo = "Room Code: " + this.state.roomName;
-    const players = this.state.players.map((player) => 
-        <ListItem>
-          <ListItemAvatar>
-            <Avatar>
-              <PersonIcon />
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={player}
-          />
-          <ListItemSecondaryAction>
-          <IconButton edge="end" aria-label="make-host">
-            <ArrowUpwardIcon />
-          </IconButton>
-        </ListItemSecondaryAction>
-        </ListItem>
-      );
-    const host = 
-      <ListItem>
-        <ListItemAvatar>
-          <Avatar>
-            <StarIcon />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText
-          primary = {this.state.host}
-        />
-      </ListItem>
-    return (
-      <Card>
-        <CardContent className={classes.card}>
-          <CardHeader title={roomInfo} />
-          <Box>
-            <List>
-              {host}
-              {players}
-            </List>
-          </Box>
-        </CardContent>
-      </Card>
-    )
-  }
+  return (
+    <Card>
+      <CardContent className={classes.card}>
+        <CardHeader title={"Room Code: " + roomName} />
+        <Box>
+          <List>
+            <ListItem key={host}>
+              <ListItemAvatar>
+                <Avatar>
+                  <StarIcon />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText
+                primary={host}
+              />
+            </ListItem>
+            {players.map((player) =>
+              (<ListItem key={player}>
+                <ListItemAvatar>
+                  <Avatar>
+                    <PersonIcon />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={player}
+                />
+                <ListItemSecondaryAction>
+                  <IconButton edge="end" aria-label="make-host">
+                    <ArrowUpwardIcon />
+                  </IconButton>
+                </ListItemSecondaryAction>
+              </ListItem>))}
+          </List>
+        </Box>
+      </CardContent>
+    </Card>
+  )
 }
-LobbyInfo.contextType = SocketContext;
-
-LobbyInfo.propTypes = {
-  classes: PropTypes.object.isRequired,
-};
-
-export default withStyles(styles)(LobbyInfo);
+export default LobbyInfo;

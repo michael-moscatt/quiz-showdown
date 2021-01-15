@@ -10,6 +10,7 @@ var io = require('socket.io')(http);
 // Misc
 var fs = require('fs');
 var util = require('util');
+const crypto = require("crypto");
 
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
@@ -34,11 +35,11 @@ io.on('connection', function (socket) {
     socket.on('host', function(username) {
         username = username.substring(0, 16);
         var roomName = randomLetters(1); // CHANGE TO 6
-        socket.emit('host-response', "ok");
         rooms[roomName] = new Room(user, roomName);
         room = rooms[roomName];
         user.name = username;
-        socket.join(roomName);
+        joinRoom(user, roomName, room);
+        socket.emit('host-response', "ok");
         console.log("Room %s: Hosted by '%s'", roomName, username);
     });
 
@@ -58,7 +59,7 @@ io.on('connection', function (socket) {
             || username === room['host'].name){
             response = "name taken";
         } else {
-            user.name = username;
+            user.name = username.substring(0, 16);
             response = "ok";
             joinRoom(user, roomName, room);
             console.log("Room %s: '%s' joined", roomName, username);
@@ -78,21 +79,10 @@ io.on('connection', function (socket) {
         }
     });
 
-    socket.on('request-is-host', () => {
-        if('host' in room){
-            var isHost = room.host === user;
-            socket.emit('is-host-response', isHost);
-        }
-    });
-
     socket.on('start-game', () => {
         if('host' in room && room.host == user && room.state === 'lobby'){
             startGame(room);
         }
-    });
-
-    socket.on('request-matches-list', () => {
-        socket.emit('matches-list-response', matchInfo);
     });
 
     socket.on('setting-interrupt-change', (request) => {
@@ -122,20 +112,44 @@ io.on('connection', function (socket) {
         if('host' in room && room.host == user && room.state === 'lobby'
             && 'season' in room.game && room.game.season in dataObj){
             // Ensure match exists in data object
-            if (dataObj[room.game.season].reduce((acc, match) => {
-                return acc || match.id == request;
-            }, false)){
+            if (getFrames(room.game.season, request)){
                 room.game.match = request;
                 socket.to(room.name).emit('setting-match-change', request);
             }
         }
     });
 
-    socket.on('start-game-request', () => {
-        if('host' in room && room.host == user && room.state === 'lobby'
-            && 'match' in room.game){
-            console.log("Game started in room" + room.name);
+    socket.on('request-lobby-settings', () => {
+        socket.emit('matches-list-response', matchInfo);
+        if('host' in room){
+            var isHost = room.host === user;
+            socket.emit('is-host-response', isHost);
         }
+        socket.emit('setting-interrupt-change', room.settings['interrupt']);
+        socket.emit('setting-override-change', room.settings.override);
+        if(room.game.season){
+            socket.emit('setting-season-change', room.game.season);
+        }
+        if(room.game.match){
+            socket.emit('setting-match-change', room.game.match);
+        }
+    });
+
+    socket.on('start-game-request', () => {
+        if('host' in room && user === room.host && room.state === 'lobby'
+            && 'match' in room.game){
+            setUpGame(room);
+            io.to(room.name).emit('start-game');
+            console.log("Room %s: Game started", room.name);
+        }
+    });
+
+    socket.on('request-scores', () => {
+        broadcastScore(room, false, socket);
+    });
+
+    socket.on('add-200', () => {
+        modifyScore(room, user.id, 200);
     });
 });
 
@@ -157,13 +171,20 @@ function tryToRead(){
     }
 }
 
+function Game(){
+    this.match = null;
+    this.season = null;
+    this.scores = {}; // uid -> score
+}
+
 function User(socket){
+    this.id = crypto.randomBytes(16).toString("hex");
     this.socket = socket;
     this.name = "";
 }
 
 function Room(user, roomName){
-    this.game = {};
+    this.game = new Game(); // Resets when the game ends
     this.users = [];
     this.host = user;
     this.name = roomName;
@@ -172,6 +193,35 @@ function Room(user, roomName){
         interrupt: false,
         override: true
     };
+}
+
+function modifyScore(room, uid, amount){
+    currentScore = room.game.scores[uid];
+    if(currentScore + amount < 0){
+        room.game.scores[uid] = 0;
+    } else{
+        room.game.scores[uid] = currentScore + amount; 
+    }
+    broadcastScore(room, true);
+}
+
+// Sets up the game, zeroing out scores, getting the frames,
+function setUpGame(room){
+    room['users'].forEach((user) => room.game.scores[user.id] = 0);
+    room.game.frames = getFrames(room.game.season, room.game.match);
+}
+
+// Grabs the frames for the given season and match
+function getFrames(season, matchNum){
+    var frames = [];
+    if (season in dataObj) {
+        dataObj[season].forEach((match) => {
+            if (match.id == matchNum) {
+                frames.push(match.frames);
+            }
+        });
+    }
+    return frames;
 }
 
 // Creates the matchInfo object for host to choose a match
@@ -217,19 +267,28 @@ function leaveRoom(user, room){
     }
 }
 
+// Broadcasts the score for the given room, and only to given socket if sendAll=false
+function broadcastScore(room, sendAll, socket = null){
+    scores = [];
+    room['users'].forEach((user) => {
+        scores.push({'name': user.name, 'score': room.game.scores[user.id]});
+    });
+    if(sendAll){
+        io.to(room.name).emit('request-scores-response', scores);
+    } else{
+        socket.emit('request-scores-response', scores);
+    }
+}
+
 // Broadcasts usernames for given room
 function broadcastUsernames(room){
     io.to(room.name).emit('usernames', 
     {
-        users: room['users'].map(user => user.name),
+        users: room['users'].filter((user) => user.name != room.host.name)
+            .map((user) => user.name),
         hostName: room.host.name
     });
     console.log("broadcasted names");
-}
-
-// Starts the game for the given room
-function startGame(room){
-
 }
 
 // Makes a new player the host

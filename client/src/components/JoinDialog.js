@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useContext, useState } from 'react';
 import Button from '@material-ui/core/Button';
 import TextField from '@material-ui/core/TextField';
 import Dialog from '@material-ui/core/Dialog';
@@ -6,67 +6,45 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import { SocketContext } from '../socket-context';
 
-class JoinDialog extends Component {
-  constructor(props){
-    super(props);
-    this.state = {
-      room: ""
-    }
-    this.handleRoomChange = this.handleRoomChange.bind(this);
-    this.handleJoin = this.handleJoin.bind(this);
+function JoinDialog(props){
+  const socket = useContext(SocketContext);
+
+  const [room, setRoom] = useState('');
+  function handleRoomChange(e){
+    setRoom(e.target.value.toUpperCase());
   }
 
-  componentDidMount(){
-    this.context.on('join-response',
-      (response) => {
-        if(response === "invalid"){
-          // TODO
-        }
-      }
-    );
-  }
-
-  handleRoomChange(e){
-    this.setState({
-      room: e.target.value.toUpperCase()
-    });
-  }
-
-  handleJoin(){
-    this.context.emit('join', {
-      roomName: this.state.room,
-      username: this.props.username
+  function handleJoin(){
+    socket.emit('join', {
+      roomName: room,
+      username: props.username
     })
   }
 
-  render() {
-    return (
-      <Dialog open={this.props.open} onClose={this.props.handleClose}>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            id="name"
-            label="Room Code"
-            type="text"
-            inputProps = {{maxLength:6}}
-            value={this.state.room}
-            onChange={this.handleRoomChange}
-            autoComplete="off"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={this.props.handleClose} color="primary">
-            Cancel
+  return (
+    <Dialog open={props.open} onClose={props.handleClose}>
+      <DialogContent>
+        <TextField
+          autoFocus
+          margin="dense"
+          id="name"
+          label="Room Code"
+          type="text"
+          inputProps={{ maxLength: 6 }}
+          value={room}
+          onChange={handleRoomChange}
+          autoComplete="off"
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={props.handleClose} color="primary">
+          Cancel
           </Button>
-          <Button onClick={this.handleJoin} color="primary">
-            Join
+        <Button onClick={handleJoin} color="primary">
+          Join
           </Button>
-        </DialogActions>
-      </Dialog>
-    )
-  }
+      </DialogActions>
+    </Dialog>
+  );
 }
-JoinDialog.contextType = SocketContext;
-
 export default JoinDialog;
