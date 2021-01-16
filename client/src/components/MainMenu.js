@@ -42,6 +42,9 @@ function MainMenu(){
           // TODO
         }
     });
+    return function removeEventListeners() {
+      socket.off('join-response');
+    }
   }
   useEffect(setEventListeners, [socket]);
 

@@ -3,32 +3,55 @@ import CardHeader from '@material-ui/core/CardHeader';
 import CardContent from '@material-ui/core/CardContent';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from "@material-ui/core/styles";
+import Grid from '@material-ui/core/Grid';
+import TurnIndicator from './TurnIndicator';
+import Box from '@material-ui/core/Box';
 
 const useStyles = makeStyles((theme) => ({
-    root: {
-      minWidth: 200,
-      margin: theme.spacing(2)
-    },
-    header: {
-        textAlign: 'center'
-    },
-    content: {
-        textAlign: 'center'
-    }
-  }));
+  card: {
+    height: 100,
+    width: 225
+  },
+  header: {
+    textAlign: 'center',
+    padding: theme.spacing(1)
+  },
+  content: {
+    textAlign: 'center',
+    padding: theme.spacing(1)
+  },
+  turnBox: {
+    height: 30,
+    margin: theme.spacing(0)
+  },
+  scoreBox: {
+    margin: theme.spacing(0)
+  }
+}));
 
-function ScoreCard(props){
-    const classes = useStyles();
+function ScoreCard(props) {
+  const classes = useStyles();
 
-    return (
-        <Card className={classes.root}>
+  return (
+    <Grid container justify="center">
+      <Grid item xs={12}>
+        <Box className={classes.turnBox} display="flex" justifyContent="center">
+        {props.turn ? <TurnIndicator /> : false}
+        </Box>
+      </Grid>
+      <Grid item xs={12}>
+        <Box className={classes.scoreBox} display="flex" justifyContent="center">
+          <Card className={classes.card}>
             <CardHeader className={classes.header} title={props.name} />
             <CardContent className={classes.content}>
-                <Typography variant="h4">
-                    ${props.score}
-                </Typography>
+              <Typography variant="h5">
+                ${props.score}
+              </Typography>
             </CardContent>
-        </Card>
-    )
+          </Card>
+        </Box>
+      </Grid>
+    </Grid>
+  );
 }
 export default ScoreCard;

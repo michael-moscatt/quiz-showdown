@@ -2,24 +2,27 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SocketContext } from '../socket-context';
 import ScoreCard from './ScoreCard';
 
-function Scoreboard(){
+function Scoreboard(props){
     const socket = useContext(SocketContext);
 
     const [scores, setScores] = useState([]);
 
     const setEventListeners = function () {
         socket.on('request-scores-response', (response) => setScores(response));
+
+        return function removeEventListeners(){
+            socket.off('request-scores-response');
+        }
     }
     useEffect(setEventListeners, [socket]);
 
     useEffect(() => socket.emit('request-scores'), [socket]);
 
-    useEffect(() => socket.emit('add-200'), [socket]);
-
     return (
         scores.map((pair) => {
-            return <ScoreCard name={pair.name} score={pair.score} />
+            const isTurn = props.turn === pair.name
+            return <ScoreCard name={pair.name} score={pair.score} turn={isTurn} />
         })
-    )
+    );
 }
 export default Scoreboard;

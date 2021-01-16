@@ -33,6 +33,12 @@ function App(){
     socket.on('start-game', () => {
       setPage('game');
     });
+
+    return function removeEventListeners(){
+      socket.off('host-response');
+      socket.off('join-response');
+      socket.off('start-game');
+    }
   }
   useEffect(setEventListeners, []);
 
@@ -50,7 +56,7 @@ function App(){
 
   return (
     <SocketContext.Provider value={socket}>
-      <Grid container spacing={3}>
+      <Grid container spacing={1}>
         <Grid item xs={12}>
           <SiteName />
         </Grid>

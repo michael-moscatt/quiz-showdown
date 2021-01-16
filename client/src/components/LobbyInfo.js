@@ -36,14 +36,21 @@ function LobbyInfo(){
         setPlayers(response.users);
         setHost(response.hostName);
       });
-    socket.emit('request-usernames');
+    
     socket.on('room-name',
       (response) => {
         setRoomName(response);
       });
-    socket.emit('request-room-name');
+
+    return function removeEventListeners(){
+      socket.off('usernames');
+      socket.off('room-name');
+    }
   }
   useEffect(setEventListeners, [socket]);
+
+  useEffect(() => {socket.emit('request-room-name')},[socket]);
+  useEffect(() => {socket.emit('request-usernames')},[socket]);
 
   return (
     <Card>

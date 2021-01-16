@@ -1,7 +1,7 @@
 import Typography from '@material-ui/core/Typography';
 import Box from '@material-ui/core/Box';
 
-export default function SiteName() {
+function SiteName() {
   return (
     <Box m={2}>
       <Typography variant="h5">
@@ -10,3 +10,4 @@ export default function SiteName() {
     </Box>
   );
 }
+export default SiteName;

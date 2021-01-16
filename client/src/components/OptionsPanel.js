@@ -47,6 +47,15 @@ function OptionsPanel(){
         setSelectedSeason(response);
       });
     socket.on('setting-match-change', response => setSelectedMatch(response));
+    
+    return function removeEventListeners(){
+      socket.off('is-host-response');
+      socket.off('matches-list-response');
+      socket.off('setting-override-change');
+      socket.off('setting-interrupt-change');
+      socket.off('setting-season-change');
+      socket.off('setting-match-change');
+    }
   }
   useEffect(setEventListeners, [socket]);
 
