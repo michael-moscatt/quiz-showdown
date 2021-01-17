@@ -3,14 +3,14 @@ import Paper from '@material-ui/core/Paper';
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    height: 60,
-    width: 230,
+    height: 80,
+    width: '100%',
     borderRadius: '0px',
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
-    padding: theme.spacing(1)
+    padding: theme.spacing(3)
   }
 }));
 
@@ -19,7 +19,7 @@ function CategoryCard(props) {
   const classes = useStyles();
 
   return (
-    <Paper className={classes.root}>
+    <Paper className={classes.root} key={props.name}>
       {props.name}
     </Paper>
   )

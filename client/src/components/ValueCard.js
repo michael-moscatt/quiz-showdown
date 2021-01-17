@@ -3,8 +3,8 @@ import { makeStyles } from "@material-ui/core/styles";
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    height: 60,
-    width: 230,
+    height: '100%',
+    width: '100%',
     borderRadius: '0px',
     display: "flex",
     justifyContent: "center",

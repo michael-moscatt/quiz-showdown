@@ -1,3 +1,5 @@
+/* ******************************************* Imports ********************************************/
+
 // Express
 const express = require('express');
 const app = express();
@@ -12,26 +14,77 @@ var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
 
+/* ********************************************* Globals ******************************************/
+
+const DATA_FILE_NAME = "data.json";
+const DATA_FILE_PATH = "data";
+const ROOM_LIMIT = 4;
+const POINT_VALUES = [200,400,600,800,1000];
+const TIME_AFTER_Q_ENDS_MS = 5000; // Time after question ends before buzzing is disallowed
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
 var rooms = {}; // roomName -> room
-const ROOM_LIMIT = 4;
-const POINT_VALUES = [200,400,600,800,1000];
+
+/* ******************************************* Load in data ***************************************/
+
+// Read from data file
+fs.readFile(DATA_FILE_PATH + '/' + DATA_FILE_NAME, 'utf8', function (err, data) {
+    if (err) {
+        throw Error('Could not load data from file')
+    }
+    dataObj = JSON.parse(data);
+});
+
+// Attempt to pull out season, id, and date from all matches
+var readInterval = setInterval(tryToRead, 100);
+function tryToRead() {
+    if ('35' in dataObj) {
+        clearInterval(readInterval);
+        pullMatchInfo();
+    }
+}
+
+// Create the matchInfo object that holds all questions
+function pullMatchInfo(){
+    Object.keys(dataObj).forEach(function(season) {
+        var matches = [];
+        dataObj[season].forEach(function(match) {
+            var iso_date = match["date"];
+            var american_date = iso_date.slice(5) + '-' + iso_date.slice(0, 4);
+            matches.push({
+                "id": match["id"],
+                "date": american_date
+            })
+        });
+        matchInfo[season] = matches;
+    });
+}
+
+/* *********************************** Start Server ***********************************************/
 
 http.listen(port, function() {
     console.log('Server running. Port: ' + port);
 });
 
+/* ************************************ Listeners *************************************************/
+
+// Create user on connection, set listeners for the menu
 io.on('connection', function (socket) {
     var user = new User(socket);
     var room = {};
+    setMenuListeners(user, room);
 
     socket.on('disconnect', function() {
-        console.log("socket dc");
+        console.log(user.name ? user.name : "Anonymous" + " has disconnected.");
         if('users' in room){
             leaveRoom(user, room);
         }
-    });
+    });    
+});
+
+// Set the listeners for a user that is on the menu
+function setMenuListeners(user, room){
+    var socket = user.socket;
 
     socket.on('host', function(username) {
         username = username.substring(0, 16);
@@ -44,7 +97,6 @@ io.on('connection', function (socket) {
         console.log("Room %s: Hosted by '%s'", roomName, username);
     });
 
-    // Check if user is able to join the room, if so then add them
     socket.on('join', function(joinObj) {
         var response;
         var roomName = joinObj.roomName;
@@ -67,6 +119,20 @@ io.on('connection', function (socket) {
         }
         socket.emit('join-response', response);
     });
+}
+
+// Remove the listeners for a user that leaves the menu
+function removeMenuListeners(user){
+    var socket = user.socket;
+
+    socket.removeAllListeners('host');
+    socket.removeAllListeners('join');
+}
+
+
+// Sets the listeners for a user that is in a lobby
+function setLobbyListeners(user, room){
+    var socket = user.socket;
 
     socket.on('request-usernames', () => {
         if('users' in room){
@@ -77,12 +143,6 @@ io.on('connection', function (socket) {
     socket.on('request-room-name', () => {
         if('name' in room){
             socket.emit('room-name', room.name);
-        }
-    });
-
-    socket.on('start-game', () => {
-        if('host' in room && room.host == user && room.state === 'lobby'){
-            startGame(room);
         }
     });
 
@@ -139,11 +199,28 @@ io.on('connection', function (socket) {
     socket.on('start-game-request', () => {
         if('host' in room && user === room.host && room.state === 'lobby'
             && 'match' in room.game){
-            setUpGame(room);
-            io.to(room.name).emit('start-game');
-            console.log("Room %s: Game started", room.name);
+            startGame(room);     
         }
     });
+}
+
+// Remove the listeners for a user in the lobby
+function removeLobbyListeners(user){
+    var socket = user.socket;
+
+    socket.removeAllListeners('request-usernames');
+    socket.removeAllListeners('request-room-name');
+    socket.removeAllListeners('setting-interrupt-change');
+    socket.removeAllListeners('setting-override-change');
+    socket.removeAllListeners('setting-season-change');
+    socket.removeAllListeners('setting-match-change');
+    socket.removeAllListeners('request-lobby-settings');
+    socket.removeAllListeners('start-game-request');
+}
+
+// Set the listeners for a user in the game
+function setGameListeners(user, room){
+    var socket = user.socket;
 
     socket.on('request-name', () => {
         socket.emit('name', user.name);
@@ -166,29 +243,34 @@ io.on('connection', function (socket) {
     });
 
     socket.on('request-take-turn', (index) => {
-        if(room.game.turn == user && room.game.values[index]){
+        if(room.game.turn == user && room.game.values[index] && !room.game.questionActive){
             takeTurn(room, index);
         }
     });
-});
 
-// Load in data from file
-fs.readFile('data/data.json', 'utf8', function (err, data) {
-  if(err){
-     throw Error('Could not load data from file') 
-  }
-  dataObj = JSON.parse(data);
-});
-
-// Attempt to pull out season, id, and date from all matches
-var attemptRead = setInterval(tryToRead, 100);
-
-function tryToRead(){
-    if('35' in dataObj){
-        clearInterval(attemptRead);
-        pullMatchInfo();
-    }
+    socket.on('request-buzz', () => {
+        if(room.game.questionActive){
+            console.log("Buzz that counted");
+        } else{
+            console.log("Buzz that didn't count");
+        }
+    });
 }
+
+// Remove the listeners for a user who is no longer in game
+function removeGameListeners(user){
+    var socket = user.socket;
+
+    socket.removeAllListeners('request-name');
+    socket.removeAllListeners('request-scores');
+    socket.removeAllListeners('request-categories');
+    socket.removeAllListeners('request-question-values');
+    socket.removeAllListeners('request-turn-name');
+    socket.removeAllListeners('request-take-turn');
+    socket.removeAllListeners('request-buzz');
+}
+
+/* ***************************************** Constructors *****************************************/
 
 function Question(){
     this.curIndex = 0;
@@ -229,6 +311,78 @@ function Room(user, roomName){
     };
 }
 
+/* *********************************** Menu Functions *********************************************/
+
+// Joins the given user to the room, informs other players
+function joinRoom(user, roomName, room){
+    room = rooms[roomName];
+    room['users'].push(user);
+    user['socket'].join(roomName);
+    broadcastUsernames(room);
+    removeMenuListeners(user);
+    setLobbyListeners(user, room);
+}
+
+// Returns n random, capital letters as a string
+function randomLetters(n){
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    var letters = [];
+    
+    for(i=0;i<n;i++){
+        letters.push(alphabet[Math.floor(Math.random() * alphabet.length)]);
+    }
+    return letters.join("");
+}
+
+/* *********************************** Lobby Functions ********************************************/
+
+// Removes user from room, inform other players if there are any, closes room if not
+function leaveRoom(user, room){
+    var userWasHost = false;
+    if(user.name == room.host.name){ // TODO: handle host leaving room
+        room.host == {name: "left"};
+        userWasHost = true;
+    } else {
+        room['users'] = room['users'].filter(function (oneUser) {
+            return oneUser !== user;
+        });
+    }
+    user['socket'].leave(room.name);
+    if(room['users'].length < 1 && userWasHost){
+        delete rooms[room.name];
+    } else {
+        broadcastUsernames(room);
+    }
+}
+
+// Makes a new player the host
+function newHost(){
+    // broadcast usernames
+    // broadcast is-Host-Response
+}
+
+// Sets up the game, zeroing out scores, getting the frames, set up single jeopardy
+// Set turn to host, remove listeners for lobby actions
+function startGame(room){
+
+    room['users'].forEach((user) => room.game.scores[user.id] = 0);
+    room.state = 'game';
+    room.game.frames = getFrames(room.game.season, room.game.match);
+    room.game.frame = room.game.frames['single'];
+    room.game.part = 'single';
+    room.game.values = getValuesList(room);
+    room.game.turn = room.host;
+    room.users.forEach(user => 
+        {
+            removeLobbyListeners(user);
+            setGameListeners(user, room);
+        });
+    io.to(room.name).emit('start-game');
+    console.log("Room %s: Game started", room.name);
+}
+
+/* *********************************** Game Functions *********************************************/
+
 function modifyScore(room, uid, amount){
     currentScore = room.game.scores[uid];
     if(currentScore + amount < 0){
@@ -239,48 +393,44 @@ function modifyScore(room, uid, amount){
     broadcastScore(room, true);
 }
 
-// Make the move as requested
+// Reads the selected question, given by the index
 function takeTurn(room, index){
-    var questionObj = room.game.frame[index % 6].cards[Math.floor(index/6)];
+    var categoryData = room.game.frame[index % 6];
+    var questionData = categoryData.cards[Math.floor(index/6)];
     var question = room.game.question;
-    question.wordList = questionObj.hint.split(" ");
-    if(questionObj.double){
+    question.wordList = questionData.hint.split(" ");
+    question.curIndex = 0;
+    if(questionData.double){
 
     } else{
         question.value = room.game.values[index];
         if(room.settings.interrupt){
             room.game.questionActive = true;
         }
+        let category = categoryData.name;
+        io.to(room.name).emit('question-info', category, question.value);
         question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
     }
 
 }
 
+// Transmits the question to the given room
 function transmitQuestion(room){
     var question = room.game.question;
     var string = question.wordList.slice(0,question.curIndex+1).join(" ");
     io.to(room.name).emit('question', string);
     question.curIndex = question.curIndex + 1;
 
-    console.log("word list");
-    console.log(question.wordList);
-
-    if(question.curIndex > question.wordList.length){
-        console.log("transmitQuestion end");
+    if(question.curIndex == question.wordList.length){
         room.game.questionActive = true;
         clearInterval(question.transmissionTimer);
+        setTimeout(endTurn, TIME_AFTER_Q_ENDS_MS, room);
     }
 }
 
-// Sets up the game, zeroing out scores, getting the frames, set up single jeopardy
-// Set turn to host
-function setUpGame(room){
-    room['users'].forEach((user) => room.game.scores[user.id] = 0);
-    room.game.frames = getFrames(room.game.season, room.game.match);
-    room.game.frame = room.game.frames['single'];
-    room.game.part = 'single';
-    room.game.values = getValuesList(room);
-    room.game.turn = room.host;
+// Ends the turn for the given room
+function endTurn(room){
+    room.game.questionActive = false;
 }
 
 // Gets the question values for a given room, using the room.game.values list
@@ -337,49 +487,6 @@ function getFrames(season, matchNum){
     return frames;
 }
 
-// Creates the matchInfo object for host to choose a match
-function pullMatchInfo(){
-    Object.keys(dataObj).forEach(function(season) {
-        var matches = [];
-        dataObj[season].forEach(function(match) {
-            var iso_date = match["date"];
-            var american_date = iso_date.slice(5) + '-' + iso_date.slice(0, 4);
-            matches.push({
-                "id": match["id"],
-                "date": american_date
-            })
-        });
-        matchInfo[season] = matches;
-    });
-}
-
-// Informs all players in the room that the user has joined
-function joinRoom(user, roomName, room){
-    room = rooms[roomName];
-    room['users'].push(user);
-    user['socket'].join(roomName);
-    broadcastUsernames(room);
-}
-
-// Removes user from room, inform other players if there are any, closes room if not
-function leaveRoom(user, room){
-    var userWasHost = false;
-    if(user.name == room.host.name){ // TODO: handle host leaving room
-        room.host == {name: "left"};
-        userWasHost = true;
-    } else {
-        room['users'] = room['users'].filter(function (oneUser) {
-            return oneUser !== user;
-        });
-    }
-    user['socket'].leave(room.name);
-    if(room['users'].length < 1 && userWasHost){
-        delete rooms[room.name];
-    } else {
-        broadcastUsernames(room);
-    }
-}
-
 // Broadcasts the score for the given room, and only to given socket if sendAll=false
 function broadcastScore(room, sendAll, socket = null){
     scores = [];
@@ -401,21 +508,4 @@ function broadcastUsernames(room){
             .map((user) => user.name),
         hostName: room.host.name
     });
-}
-
-// Makes a new player the host
-function newHost(){
-    // broadcast usernames
-    // broadcast is-Host-Response
-}
-
-// Returns n random, capital letters as a string
-function randomLetters(n){
-    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    var letters = [];
-    
-    for(i=0;i<n;i++){
-        letters.push(alphabet[Math.floor(Math.random() * alphabet.length)]);
-    }
-    return letters.join("");
 }
