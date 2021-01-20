@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
 import Button from '@material-ui/core/Button';
 import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
 import Slider from '@material-ui/core/Slider';
 import Input from '@material-ui/core/Input';
 import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import { makeStyles } from "@material-ui/core/styles";
+
+const useStyles = makeStyles((theme) => ({
+  slider: {
+    width: 250
+  }
+}));
 
 function DDWagerDialog(props){
+  const classes = useStyles();
 
   const [wager, setWager] = useState(0);
 
@@ -34,34 +42,37 @@ function DDWagerDialog(props){
 
   return (
     <Dialog open={props.open} onClose={props.handleClose}>
+      <DialogTitle id="wager-dailog-title">{"Daily Double"}</DialogTitle>
       <DialogContent>
-      <Typography id="input-slider" gutterBottom>
-        Wager
-      </Typography>
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs>
-          <Slider
-            value={typeof wager === 'number' ? wager : 0}
-            onChange={handleSliderChange}
-            aria-labelledby="input-slider"
-          />
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs>
+            <Slider
+              className={classes.slider}
+              value={typeof wager === 'number' ? wager : 0}
+              onChange={handleSliderChange}
+              aria-labelledby="input-slider"
+              step={Math.ceil(props.max / 1000)*100}
+              marks
+              min={0}
+              max={props.max}
+            />
+          </Grid>
+          <Grid item>
+            <Input
+              value={wager}
+              margin="dense"
+              onChange={handleInputWager}
+              onBlur={handleBlur}
+              inputProps={{
+                step: 100,
+                min: 0,
+                max: props.max,
+                type: 'number',
+                'aria-labelledby': 'input-slider',
+              }}
+            />
+          </Grid>
         </Grid>
-        <Grid item>
-          <Input
-            value={wager}
-            margin="dense"
-            onChange={handleInputWager}
-            onBlur={handleBlur}
-            inputProps={{
-              step: 100,
-              min: 0,
-              max: props.max,
-              type: 'number',
-              'aria-labelledby': 'input-slider',
-            }}
-          />
-        </Grid>
-      </Grid>
       </DialogContent>
       <DialogActions>
         <Button onClick={handlePlaceWager} color="primary">

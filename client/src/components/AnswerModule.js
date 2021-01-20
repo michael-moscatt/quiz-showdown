@@ -11,7 +11,7 @@ const useStyles = makeStyles((theme) => ({
   root: {
     height: '100%',
     display: 'flex',
-    alignItems: "center"
+    alignItems: "flex-end"
   },
   button: {
     margin: theme.spacing(2),
@@ -22,6 +22,11 @@ const useStyles = makeStyles((theme) => ({
     margin: theme.spacing(2),
     width: 350,
     height: 55
+  },
+  textBox: {
+    boxSizing: 'border-box',
+    display: 'flex', 
+    alignItems: 'flex-end'
   }
 }));
 
@@ -99,7 +104,7 @@ function AnswerModule() {
 
   const selfBuzz = 
     <Box className={classes.root}>
-      <TextField className={classes.input} id="answer" label="Answer"
+      <TextField className={classes.input} id="answer" label="Answer" inputProps={{ maxLength: 60 }}
         variant="outlined" autoComplete="off" onChange={handleChange} autoFocus />
       <Button className={classes.button} color="primary" variant="contained"
         onClick={handleSubmit}>
@@ -108,9 +113,8 @@ function AnswerModule() {
     </Box>
 
   const opponentBuzz = 
-    <Box className={classes.root} m={2}>
-      <Typography variant="h6" >{opponentName}:&nbsp;</Typography>
-      <Typography>{opponentText}</Typography>
+    <Box className={classes.textBox} p={3}>
+      <Typography><strong>{opponentName}</strong>:&nbsp;{opponentText}</Typography>
     </Box>
 
   return (

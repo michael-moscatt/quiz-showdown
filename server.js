@@ -23,7 +23,7 @@ const POINT_VALUES = [200,400,600,800,1000];
 const TIME_AFTER_Q_ENDS_MS = 5000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD_MS = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT_MS = 250; // Lockout period for an illegal buzz
-const TIME_TO_ANSWER_MS = 5000; // Time player has to answer after buzzing
+const TIME_TO_ANSWER_MS = 500000; // Time player has to answer after buzzing
 const TIME_AFTER_SELECTION_MS = 1500; // Time after player selects question before it's read
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
