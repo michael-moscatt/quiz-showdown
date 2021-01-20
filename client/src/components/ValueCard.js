@@ -10,7 +10,9 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "center",
     alignItems: "center",
     cursor: (props) =>
-      props.value && props.active ? "pointer" : "default"
+      props.value && props.active ? "pointer" : "default",
+    background: (props) => props.status === 'unselected' ? theme.palette.common.white :
+      theme.palette.grey[400]
   }
 }));
 
@@ -23,9 +25,18 @@ function ValueCard(props) {
     }
   }
 
+  var text = '';
+  if(props.value){
+    if(props.status === 'double'){
+      text = 'Daily Double';
+    } else{
+      text = '$' + props.value;
+    }
+  }
+
   return (
     <Paper className={classes.root} onClick={handleClick}>
-      {props.value ? '$' + props.value : ''}
+      {text}
     </Paper>
   );
 }

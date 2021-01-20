@@ -13,7 +13,6 @@ var io = require('socket.io')(http);
 var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
-const { runInThisContext } = require('vm');
 
 /* ********************************************* Globals ******************************************/
 
@@ -22,8 +21,10 @@ const DATA_FILE_PATH = "data";
 const ROOM_LIMIT = 4;
 const POINT_VALUES = [200,400,600,800,1000];
 const TIME_AFTER_Q_ENDS_MS = 5000; // Time after question ends before buzzing is disallowed
+const TIME_AFTER_Q_ENDS_DD_MS = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT_MS = 250; // Lockout period for an illegal buzz
 const TIME_TO_ANSWER_MS = 5000; // Time player has to answer after buzzing
+const TIME_AFTER_SELECTION_MS = 1500; // Time after player selects question before it's read
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
 var rooms = {}; // roomName -> room
@@ -248,7 +249,7 @@ function setBoardListeners(user, room){
 
     socket.on('request-take-turn', (index) => {
         if(room.game.turn == user && room.game.values[index] && !room.game.questionActive){
-            startQuestion(room, index);
+            startQuestion(room, user, index);
         }
     });
 }
@@ -432,34 +433,56 @@ function modifyScore(room, uid, amount){
 }
 
 // Reads the selected question
-function startQuestion(room, index){
+function startQuestion(room, user, index){
+    let categoryData = room.game.frame[index % 6];
+    let category = categoryData.name;
+    let questionData = categoryData.cards[Math.floor(index/6)];
+    let question = room.game.question;
+    let double = questionData.double;
+    let values = double ? getValues(room, index, 'double') : getValues(room, index, 'selected');
     room.users.forEach((user) => {
         room.game.lockoutList[user.id] = false;
         removeBoardListeners(user);
         setQuestionListeners(user, room);
+        user.socket.emit('question-values', values);
     });
-    var categoryData = room.game.frame[index % 6];
-    var questionData = categoryData.cards[Math.floor(index/6)];
-    var question = room.game.question;
     question.completedTransmission = false;
     question.wordList = questionData.hint.split(" ");
     question.curIndex = 0;
     question.index = index;
-    if(questionData.double){
-        // TODO: cover doubles
-    } else{
-        question.value = room.game.values[index];
-        let category = categoryData.name;
-        io.to(room.name).emit('question-info', category, question.value);
-        question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
-        if(room.settings.interrupt){
-            room.game.questionActive = true;
+    setTimeout(() => {
+        if(questionData.double){
+            let socket = user.socket
+            let maxOnBoard = room.game.part === 'single' ? 1000 : 2000;
+            let max = Math.max(room.game.scores[user.id], maxOnBoard);
+            socket.emit('daily-double', max);
+            room.users.forEach((roomUser) => {
+                roomUser === user ? false : lockout(roomUser, room, true)
+            });
+            socket.on('daily-double-wager', (wager) => {
+                socket.removeAllListeners('daily-double-wager');
+                question.value = Math.min(Math.max(wager, 0), max);
+                preTransmitQuestion(room, category, question, questionData.double, user);
+            })
+        } else{
+            question.value = room.game.values[index];
+            preTransmitQuestion(room, category, question, questionData.double, user);
+            if(room.settings.interrupt){
+                room.game.questionActive = true;
+            }
         }
-    }
+    }, TIME_AFTER_SELECTION_MS);
 }
 
-// Transmits the question to the given room
-function transmitQuestion(room){
+// Preps the players before the question is transmitted
+function preTransmitQuestion(room, category, question, double, user){
+    io.to(room.name).emit('question-info', category, question.value);
+    question.transmissionTimer = 
+        setInterval(transmitQuestion, room.settings.delay, room, double, user);
+}
+
+// Transmits the question to the given room, taking into account of the question is a daily double
+function transmitQuestion(room, double, user){
     var question = room.game.question;
     var string = question.wordList.slice(0,question.curIndex+1).join(" ");
     io.to(room.name).emit('question', string);
@@ -469,7 +492,15 @@ function transmitQuestion(room){
         room.game.question.completedTransmission = true;
         room.game.questionActive = true;
         clearInterval(question.transmissionTimer);
-        room.game.question.timeToLiveTimer = setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
+        if (double) {
+            room.game.question.timeToLiveTimer = setTimeout(() => {
+                modifyScore(room, user.id, room.game.question.value*-1);
+                endQuestion(room);
+            }, TIME_AFTER_Q_ENDS_DD_MS);
+        } else {
+            room.game.question.timeToLiveTimer =
+                setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
+        }
     }
 }
 
@@ -549,14 +580,21 @@ function endQuestion(room){
     io.to(room.name).emit('question-over');
 }
 
-// Gets the question values for a given room, using the room.game.values list
+// Gets the question values for a given room, pairing with a status
+// If the index is given (not null), it pairs that index with the given type
+// If index is not given, it pairs all values with 'unselected'
 // [[200, 200, 200...], [400, null, 400], ...]
-function getValues(room){
+function getValues(room, index, type = 'unselected'){
     var values = [];
     for(i = 0;i < 5; i++){
         var row = [];
         for(j=0;j<6;j++){
-            row.push(room.game.values[(i*6)+j]);
+            let total = (i*6)+j;
+            let defType = 'unselected';
+            if(index && total==index){
+                defType = type;
+            }
+            row.push([room.game.values[total], defType]);
         }
         values.push(row);
     }
@@ -628,5 +666,5 @@ function broadcastUsernames(room){
 
 // Broadcasts the values of the question for the room
 function broadcastQuestionValues(user, room){
-    user.socket.emit('question-values', getValues(room));
+    user.socket.emit('question-values', getValues(room, null));
 }

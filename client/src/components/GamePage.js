@@ -6,6 +6,7 @@ import QuestionBoard from './QuestionBoard.js';
 import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
 import { makeStyles } from "@material-ui/core/styles";
+import DDWagerDialog from './DDWagerDialog';
 
 const useStyles = makeStyles((theme) => ({
   box: {
@@ -26,12 +27,18 @@ function GamePage() {
     const [category, setCategory] = useState('');
     const [value, setValue] = useState('');
     const [question, setQuestion] = useState('');
+    const [wagerDialogOpen, setWagerDialogOpen] = useState(false);
+    const [wagerMax, setWagerMax] = useState(0);
 
     function setEventListeners() {
         socket.on('categories', cat => setCategories(cat));
         socket.on('question-values', vals => setValues(vals));
         socket.on('turn-name', name => setTurnName(name));
         socket.on('name', name => setName(name));
+        socket.on('daily-double', (max) => {
+            setWagerMax(max);
+            setWagerDialogOpen(true);
+        });
         socket.on('question-info', (category, value) => {
             setMode('question');
             setQuestion('');
@@ -45,6 +52,7 @@ function GamePage() {
             socket.off('question-values');
             socket.off('turn-name');
             socket.off('name');
+            socket.off('daily-double');
             socket.off('question-info');
             socket.off('question');
             socket.off('question-over');
@@ -62,19 +70,31 @@ function GamePage() {
         socket.emit('request-take-turn', index);
     }
 
+    function handleWagerDialogClose(){
+        setWagerDialogOpen(false);
+    }
+
+    function handlePlaceWager(wager){
+        socket.emit('daily-double-wager', wager);
+        handleWagerDialogClose();
+    }
+
     return (
         <Grid container justify="center">
             <Grid item xs={12} lg={10}>
                 <Box className={classes.box} display="flex" justifyContent="center" m={1}>
                     {mode === 'board' ? 
                     <Gameboard categories={categories} values={values} handleClick={handleValueCard}
-                        active={myTurn} /> : 
+                        active={myTurn} />
+                         : 
                     <QuestionBoard category={category} value={value} question={question}/>}
                 </Box>
             </Grid>
             <Grid item xs={12} lg={10}>
                 <Box display="flex" justifyContent="center" m={1}>
                     <Scoreboard turn={turnName}/>
+                    <DDWagerDialog open={wagerDialogOpen} handleClose={handleWagerDialogClose}
+                        max={wagerMax} handlePlaceWager={handlePlaceWager} />
                 </Box>
             </Grid>
         </Grid>

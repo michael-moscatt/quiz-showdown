@@ -18,10 +18,10 @@ function Gameboard(props){
     const valueCards = props.values.map((row, rowInd) => {
         return <Grid item xs={12} lg={11} key={rowInd+1}>
             <Box className={classes.box} display="flex" justifyContent="center">
-                {row.map((val, ind) => {
+                {row.map((pair, ind) => {
                     let index = (rowInd*6)+ind;
-                    return <ValueCard value={val} onClick={props.handleClick} index={index}
-                        active={props.active} key={index}/>
+                    return <ValueCard value={pair[0]} onClick={props.handleClick} index={index}
+                        active={props.active} key={index} status={pair[1]}/>
                 })}
             </Box>
         </Grid>
