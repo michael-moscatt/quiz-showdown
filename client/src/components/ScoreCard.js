@@ -31,6 +31,8 @@ const useStyles = makeStyles((theme) => ({
 
 function ScoreCard(props) {
   const classes = useStyles();
+  const cardText = props.score < 0 ? `-$${props.score*-1}` : `$${props.score}`
+
 
   return (
     <Grid container justify="center">
@@ -45,7 +47,7 @@ function ScoreCard(props) {
             <CardHeader className={classes.header} title={props.name} />
             <CardContent className={classes.content}>
               <Typography variant="h5">
-                ${props.score}
+                {cardText}
               </Typography>
             </CardContent>
           </Card>

@@ -4,7 +4,7 @@ import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
 import { makeStyles } from "@material-ui/core/styles";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles(() => ({
     box: {
       height: '100%'
     }
@@ -25,9 +25,8 @@ function Gameboard(props){
                 })}
             </Box>
         </Grid>
-    }
-    );
-// May have to add key to grid item? TODO:
+    });
+
     return (
         <Grid container justify="center" >
             <Grid item xs={12} lg={11}>

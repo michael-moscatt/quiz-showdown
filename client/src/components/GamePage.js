@@ -9,7 +9,7 @@ import { makeStyles } from "@material-ui/core/styles";
 
 const useStyles = makeStyles((theme) => ({
   box: {
-    height: 580
+    height: 550
   }
 }));
 
@@ -34,10 +34,12 @@ function GamePage() {
         socket.on('name', name => setName(name));
         socket.on('question-info', (category, value) => {
             setMode('question');
+            setQuestion('');
             setCategory(category);
             setValue(value);
         });
         socket.on('question', question => setQuestion(question));
+        socket.on('question-over', () => setMode('board'));
         return function removeEventListeners() {
             socket.off('categories');
             socket.off('question-values');
@@ -45,6 +47,7 @@ function GamePage() {
             socket.off('name');
             socket.off('question-info');
             socket.off('question');
+            socket.off('question-over');
         }
     }
     useEffect(setEventListeners, [socket]);

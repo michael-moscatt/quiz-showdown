@@ -3,14 +3,15 @@ import Paper from '@material-ui/core/Paper';
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    height: 80,
+    height: '100%',
     width: '100%',
     borderRadius: '0px',
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
-    padding: theme.spacing(3)
+    paddingRight: theme.spacing(2),
+    paddingLeft: theme.spacing(2)
   }
 }));
 

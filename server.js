@@ -13,6 +13,7 @@ var io = require('socket.io')(http);
 var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
+const { runInThisContext } = require('vm');
 
 /* ********************************************* Globals ******************************************/
 
@@ -21,6 +22,8 @@ const DATA_FILE_PATH = "data";
 const ROOM_LIMIT = 4;
 const POINT_VALUES = [200,400,600,800,1000];
 const TIME_AFTER_Q_ENDS_MS = 5000; // Time after question ends before buzzing is disallowed
+const TIME_LOCKOUT_MS = 250; // Lockout period for an illegal buzz
+const TIME_TO_ANSWER_MS = 5000; // Time player has to answer after buzzing
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
 var rooms = {}; // roomName -> room
@@ -75,7 +78,8 @@ io.on('connection', function (socket) {
     setMenuListeners(user, room);
 
     socket.on('disconnect', function() {
-        console.log(user.name ? user.name : "Anonymous" + " has disconnected.");
+        console.log(user.name ? user.name + " has disconnected." : 
+            "Anonymous" + " has disconnected.");
         if('users' in room){
             leaveRoom(user, room);
         }
@@ -218,8 +222,8 @@ function removeLobbyListeners(user){
     socket.removeAllListeners('start-game-request');
 }
 
-// Set the listeners for a user in the game
-function setGameListeners(user, room){
+// Set the listeners for a user on the board
+function setBoardListeners(user, room){
     var socket = user.socket;
 
     socket.on('request-name', () => {
@@ -235,7 +239,7 @@ function setGameListeners(user, room){
     });
 
     socket.on('request-question-values', () => {
-        socket.emit('question-values', getValues(room));
+        broadcastQuestionValues(user, room);
     });
 
     socket.on('request-turn-name', () => {
@@ -244,21 +248,13 @@ function setGameListeners(user, room){
 
     socket.on('request-take-turn', (index) => {
         if(room.game.turn == user && room.game.values[index] && !room.game.questionActive){
-            takeTurn(room, index);
-        }
-    });
-
-    socket.on('request-buzz', () => {
-        if(room.game.questionActive){
-            console.log("Buzz that counted");
-        } else{
-            console.log("Buzz that didn't count");
+            startQuestion(room, index);
         }
     });
 }
 
-// Remove the listeners for a user who is no longer in game
-function removeGameListeners(user){
+// Remove the listeners for a user who is no looking at the board
+function removeBoardListeners(user){
     var socket = user.socket;
 
     socket.removeAllListeners('request-name');
@@ -267,16 +263,43 @@ function removeGameListeners(user){
     socket.removeAllListeners('request-question-values');
     socket.removeAllListeners('request-turn-name');
     socket.removeAllListeners('request-take-turn');
+}
+
+// Set the listener for players who can buzz
+function setQuestionListeners(user, room){
+    var socket = user.socket;
+
+    socket.on('request-buzz', () => {
+        if(!room.game.lockoutList[user.id]){
+            if(room.game.questionActive){
+                playerBuzz(user, room);
+            } else{
+                lockout(user, room);
+            }
+        } else{
+            console.log("Buzz: Locked out");
+        }
+    });
+}
+
+// Remove the listeners for players who can no longer buzz
+function removeQuestionListeners(user){
+    var socket = user.socket;
+
     socket.removeAllListeners('request-buzz');
 }
 
 /* ***************************************** Constructors *****************************************/
 
 function Question(){
+    this.index = 0;
     this.curIndex = 0;
     this.wordList = [];
     this.value = 0;
     this.transmissionTimer = null;
+    this.timeToLiveTimer = null;
+    this.playerAnswer = '';
+    this.completedTransmission = false;
 }
 
 function Game(){
@@ -290,6 +313,7 @@ function Game(){
     this.turn = null;
     this.question = new Question();
     this.questionActive = false;
+    this.lockoutList = {} // uid -> boolean (true means they are locked out)
 }
 
 function User(socket){
@@ -375,7 +399,7 @@ function startGame(room){
     room.users.forEach(user => 
         {
             removeLobbyListeners(user);
-            setGameListeners(user, room);
+            setBoardListeners(user, room);
         });
     io.to(room.name).emit('start-game');
     console.log("Room %s: Game started", room.name);
@@ -383,35 +407,55 @@ function startGame(room){
 
 /* *********************************** Game Functions *********************************************/
 
-function modifyScore(room, uid, amount){
-    currentScore = room.game.scores[uid];
-    if(currentScore + amount < 0){
-        room.game.scores[uid] = 0;
-    } else{
-        room.game.scores[uid] = currentScore + amount; 
+// Checks if the answer for the question is correct
+function verifyAnswer(answer, room){
+    return false;
+}
+
+// Lockout the given user, for the duration if isPermanent is false, 
+// else for the rest of the question
+function lockout(user, room, isPermanent){
+    let socket = user.socket;
+    room.game.lockoutList[user.id] = true;
+    socket.emit('lockout-start');
+    if (!isPermanent) {
+        setTimeout((user, room) => {
+            room.game.lockoutList[user.id] = false;
+            socket.emit('lockout-end');
+        }, TIME_LOCKOUT_MS, user, room);
     }
+}
+
+function modifyScore(room, uid, amount){
+    room.game.scores[uid] += amount; 
     broadcastScore(room, true);
 }
 
-// Reads the selected question, given by the index
-function takeTurn(room, index){
+// Reads the selected question
+function startQuestion(room, index){
+    room.users.forEach((user) => {
+        room.game.lockoutList[user.id] = false;
+        removeBoardListeners(user);
+        setQuestionListeners(user, room);
+    });
     var categoryData = room.game.frame[index % 6];
     var questionData = categoryData.cards[Math.floor(index/6)];
     var question = room.game.question;
+    question.completedTransmission = false;
     question.wordList = questionData.hint.split(" ");
     question.curIndex = 0;
+    question.index = index;
     if(questionData.double){
-
+        // TODO: cover doubles
     } else{
         question.value = room.game.values[index];
-        if(room.settings.interrupt){
-            room.game.questionActive = true;
-        }
         let category = categoryData.name;
         io.to(room.name).emit('question-info', category, question.value);
         question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
+        if(room.settings.interrupt){
+            room.game.questionActive = true;
+        }
     }
-
 }
 
 // Transmits the question to the given room
@@ -422,15 +466,87 @@ function transmitQuestion(room){
     question.curIndex = question.curIndex + 1;
 
     if(question.curIndex == question.wordList.length){
+        room.game.question.completedTransmission = true;
         room.game.questionActive = true;
         clearInterval(question.transmissionTimer);
-        setTimeout(endTurn, TIME_AFTER_Q_ENDS_MS, room);
+        room.game.question.timeToLiveTimer = setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
     }
 }
 
-// Ends the turn for the given room
-function endTurn(room){
+// Inform players that the player has made a legal buzz
+function playerBuzz(user, room){
+    let socket = user.socket;
+    let question = room.game.question;
+    if(!question.completedTransmission){
+        clearInterval(question.transmissionTimer);
+    } else{
+        clearTimeout(question.timeToLiveTimer);
+    }
+    socket.to(room.name).emit('opponent-buzz', user.name);
+    socket.emit('buzz-accepted');
     room.game.questionActive = false;
+    lockout(user, room, true);
+    question.playerAnswer = '';
+
+    const answerTimer = setTimeout((user, room) => {
+        playerAnswer(user, question.playerAnswer, room);
+    }, TIME_TO_ANSWER_MS, user, room);
+
+    socket.on('answer-stream', (answer) => {
+        question.playerAnswer = answer;
+        socket.to(room.name).emit('answer-stream', answer);
+    });
+
+    socket.on('final-answer', (answer) => {
+        clearTimeout(answerTimer);
+        playerAnswer(user, answer, room);
+    }); 
+}
+
+// Score the player's answer
+function playerAnswer(user, answer, room){
+    let correct = verifyAnswer(answer, room);
+    if(correct){
+        modifyScore(room, user.id, room.game.question.value);
+        room.game.turn = user;
+        endQuestion(room);
+    } else{
+        modifyScore(room, user.id, room.game.question.value*-1);
+        cleanupIncorrectPlayerBuzz(room, user.socket);
+    }
+}
+
+// Cleans up after a player buzzes incorrectly
+function cleanupIncorrectPlayerBuzz(room, socket){
+    socket.removeAllListeners('answer-stream');
+    socket.removeAllListeners('final-answer');
+
+    var question = room.game.question;
+    if(room.users.reduce((acc, user) => !room.game.lockoutList[user.id] || acc, false)){
+        socket.to(room.name).emit('opponent-wrong-answer');
+        socket.emit('wrong-answer');
+        room.game.questionActive = true;
+        if(question.completedTransmission){
+            question.timeToLiveTimer = setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
+        } else{
+            question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
+        }
+        
+    } else{
+        endQuestion(room);
+    }
+}
+
+// Ends the question for the given room
+function endQuestion(room){
+    room.game.values[room.game.question.index] = null;
+    room.users.forEach((user) => {
+        removeQuestionListeners(user);
+        setBoardListeners(user, room);
+        broadcastQuestionValues(user, room);
+    });
+    room.game.questionActive = false;
+    io.to(room.name).emit('question-over');
 }
 
 // Gets the question values for a given room, using the room.game.values list
@@ -508,4 +624,9 @@ function broadcastUsernames(room){
             .map((user) => user.name),
         hostName: room.host.name
     });
+}
+
+// Broadcasts the values of the question for the room
+function broadcastQuestionValues(user, room){
+    user.socket.emit('question-values', getValues(room));
 }
