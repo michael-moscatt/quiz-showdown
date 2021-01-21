@@ -250,7 +250,7 @@ function setBoardListeners(user, room){
     socket.on('request-take-turn', (index) => {
         if(room.game.turn == user && room.game.values[index] && room.state==='board'){
             room.state = 'question';
-            startQuestion(room, user, index);
+            setUpQuestion(user, room, index);
         }
     });
 }
@@ -272,7 +272,7 @@ function setQuestionListeners(user, room){
     var socket = user.socket;
 
     socket.on('request-buzz', () => {
-        if(!room.game.lockoutList[user.id]){
+        if(!room.game.question.lockOuts[user.id]){
             if(room.game.questionActive){
                 playerBuzz(user, room);
             } else{
@@ -301,8 +301,10 @@ function setAnswerListeners(user, room){
     });
 
     socket.on('final-answer', (answer) => {
+        let question = room.game.question;
+        question.playerAnswer = answer;
         clearTimeout(room.game.question.playerAnswerTimer);
-        playerAnswer(user, answer, room);
+        playerAnswer(user, room);
     }); 
 }
 
@@ -316,16 +318,25 @@ function removeAnswerListeners(user){
 
 /* ***************************************** Constructors *****************************************/
 
-function Question(){
-    this.index = 0;
+function Question(category, index, wordList, selector, answer, value, room, double){
+    this.category = category;
+    this.index = index;
+    this.wordList = wordList;
+    this.selector = selector; // Person who selected the question
+    this.answer = answer;
     this.curIndex = 0;
-    this.wordList = [];
-    this.value = 0;
+    this.value = value;
+    this.double = double;
     this.transmissionTimer = null;
     this.timeToLiveTimer = null;
     this.playerAnswerTimer = null;
     this.playerAnswer = '';
     this.completedTransmission = false;
+    let lockOuts = {};
+    room.users.forEach((user) => {
+        lockOuts[user.id] = false;
+    });
+    this.lockOuts = lockOuts; // uid -> boolean (true means they are locked out)
 }
 
 function Game(){
@@ -337,9 +348,8 @@ function Game(){
     this.part = ''; // single, double, final
     this.values = [];
     this.turn = null;
-    this.question = new Question();
+    this.question = null;
     this.questionActive = false;
-    this.lockoutList = {} // uid -> boolean (true means they are locked out)
 }
 
 function User(socket){
@@ -438,11 +448,11 @@ function startGame(room){
 // else for the rest of the question
 function lockout(user, room, isPermanent){
     let socket = user.socket;
-    room.game.lockoutList[user.id] = true;
+    room.game.question.lockOuts[user.id] = true;
     socket.emit('lockout-start');
     if (!isPermanent) {
         setTimeout((user, room) => {
-            room.game.lockoutList[user.id] = false;
+            room.game.question.lockOuts[user.id] = false;
             socket.emit('lockout-end');
         }, TIME_LOCKOUT_MS, user, room);
     }
@@ -453,74 +463,110 @@ function modifyScore(room, uid, amount){
     broadcastScore(room, true);
 }
 
-// Reads the selected question
-function startQuestion(room, user, index){
+// Shows the players the question that has been selected, revealing if it is a DD
+function setUpQuestion(user, room, index){
     room.state = 'question';
+
+    // Grab the data for the question
     let categoryData = room.game.frame[index % 6];
     let category = categoryData.name;
     let questionData = categoryData.cards[Math.floor(index/6)];
-    let question = room.game.question;
     let double = questionData.double;
     let values = double ? getValues(room, index, 'double') : getValues(room, index, 'selected');
+
+    // Show the players which question was picked, switch the listeners
     room.users.forEach((user) => {
-        room.game.lockoutList[user.id] = false;
         removeBoardListeners(user);
         setQuestionListeners(user, room);
         user.socket.emit('question-values', values);
     });
-    question.completedTransmission = false;
-    question.wordList = questionData.hint.split(" ");
-    question.curIndex = 0;
-    question.index = index;
-    question.answer = questionData.answer;
-    setTimeout(() => {
-        if(questionData.double){
-            let socket = user.socket
-            let maxOnBoard = room.game.part === 'single' ? 1000 : 2000;
-            let max = Math.max(room.game.scores[user.id], maxOnBoard);
-            socket.emit('daily-double', max);
-            room.users.forEach((roomUser) => {
-                roomUser === user ? false : lockout(roomUser, room, true)
-            });
-            socket.on('daily-double-wager', (wager) => {
-                socket.removeAllListeners('daily-double-wager');
-                question.value = Math.min(Math.max(wager, 0), max);
-                preTransmitQuestion(room, category, question, questionData.double, user);
-            })
-        } else{
-            question.value = room.game.values[index];
-            preTransmitQuestion(room, category, question, questionData.double, user);
-            if(room.settings.interrupt){
-                room.game.questionActive = true;
-            }
-        }
-    }, TIME_AFTER_SELECTION_MS);
+
+    // Grab the rest of the question data, create the Question object
+    let value = room.game.values[index];
+    let wordList = questionData.hint.split(" ");
+    let answer = questionData.answer;
+    room.game.question = new Question(category, index, wordList, user, answer, value, room, double);
+
+    // If DD get the wager, if not then start the question
+    if(double){
+        setTimeout(getDailyDoubleWager, TIME_AFTER_SELECTION_MS, room);
+    } else{
+        setTimeout(startQuestion, TIME_AFTER_SELECTION_MS, room);
+    }
 }
 
-// Preps the players before the question is transmitted
-function preTransmitQuestion(room, category, question, double, user){
-    io.to(room.name).emit('question-info', category, question.value);
+// Gets the player's wager for a DD
+function getDailyDoubleWager(room){
+
+    // Figure out who gets to wager, inform them the max they can wager
+    let question = room.game.question;
+    let user = question.selector;
+    let socket = user.socket;
+    let maxOnBoard = room.game.part === 'single' ? 1000 : 2000;
+    let max = Math.max(room.game.scores[user.id], maxOnBoard);
+    socket.emit('daily-double', max);
+
+    // Lockout all other users, since DD is only answerable by the selector
+    room.users.forEach((roomUser) => {
+        roomUser === user ? false : lockout(roomUser, room, true)
+    });
+
+    // Once the wager is recieved, set the question value and begin question transmission
+    socket.on('daily-double-wager', (wager) => {
+        socket.removeAllListeners('daily-double-wager');
+        question.value = Math.min(Math.max(wager, 0), max);
+        startQuestion(room);
+    })
+}
+
+// Gives the information about the question to the players, then starts the transmission
+function startQuestion(room){
+
+    let question = room.game.question
+    let category = question.category;
+    let value = question.value;
+
+    // Inform players about the question info
+    io.to(room.name).emit('question-info', category, value);
+
+    // Allow for interrupts if it's in the settings
+    if (room.settings.interrupt) {
+        room.game.questionActive = true;
+    }
+
+    // Start the transmission of the question, sending a new word each (room.settings.delay)
     question.transmissionTimer = 
-        setInterval(transmitQuestion, room.settings.delay, room, double, user);
+        setInterval(transmitQuestion, room.settings.delay, room);
 }
 
-// Transmits the question to the given room, taking into account of the question is a daily double
-function transmitQuestion(room, double, user){
+// Transmits the question to the given room, taking into account if the question is a daily double
+function transmitQuestion(room){
+
+    // Broadcast the proper part of the question to the room
     var question = room.game.question;
     var string = question.wordList.slice(0,question.curIndex+1).join(" ");
     io.to(room.name).emit('question', string);
+
+    // Increment through the question
     question.curIndex = question.curIndex + 1;
+
+    // Check to see if the question is over
     if(question.curIndex == question.wordList.length){
+
+        // Complete the transmission, activate the question if it hasn't already been
+        clearInterval(question.transmissionTimer);
         room.game.question.completedTransmission = true;
         room.game.questionActive = true;
-        clearInterval(question.transmissionTimer);
-        if (double) {
-            room.game.question.timeToLiveTimer = setTimeout(() => {
-                modifyScore(room, user.id, room.game.question.value*-1);
+
+        // Set timers until the question ends, subtracting points if the DD isn't answered
+        if (question.double) {
+            question.timeToLiveTimer = setTimeout(() => {
+                let user = question.selector;
+                modifyScore(room, user.id, question.value*-1);
                 endQuestion(room);
             }, TIME_AFTER_Q_ENDS_DD_MS);
         } else {
-            room.game.question.timeToLiveTimer =
+            question.timeToLiveTimer =
                 setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
         }
     }
@@ -528,16 +574,21 @@ function transmitQuestion(room, double, user){
 
 // Inform players that the player has made a legal buzz
 function playerBuzz(user, room){
+
     let socket = user.socket;
     let question = room.game.question;
+
+    // Reset the player's answer, deactivate the question
     question.playerAnswer = '';
     room.game.questionActive = false;
-    // Stop the timers
+
+    // Stop the timers, based on which was running
     if(!question.completedTransmission){
         clearInterval(question.transmissionTimer);
     } else{
         clearTimeout(question.timeToLiveTimer);
     }
+
     // Inform the players, set listeners for player who buzzed
     socket.to(room.name).emit('opponent-buzz', user.name);
     setAnswerListeners(user, room);
@@ -547,16 +598,22 @@ function playerBuzz(user, room){
     lockout(user, room, true);
 
     // Start the timer for the player to answer
-    const answerTimer = setTimeout((user, room) => {
-        playerAnswer(user, question.playerAnswer, room);
-    }, TIME_TO_ANSWER_MS, user, room);
+    question.playerAnswerTimer =
+        setTimeout(() => {
+            playerAnswer(user, room);
+        }, TIME_TO_ANSWER_MS);
 }
 
 // Score the player's answer
-function playerAnswer(user, answer, room){
+function playerAnswer(user, room){
+
+    let question = room.game.question;
+    let answer = question.playerAnswer;
+
     // Remove the listeners for the player who answered
     removeAnswerListeners(user, room);
 
+    // Check the answer, modifying the score appropriately
     let correct = verifyAnswer(answer, room);
     if(correct){
         modifyScore(room, user.id, room.game.question.value);
@@ -577,7 +634,7 @@ function verifyAnswer(answer, room){
 function cleanupIncorrectPlayerBuzz(room, socket){
     var question = room.game.question;
     // Check if anyone else can still answer the question
-    if(room.users.reduce((acc, user) => !room.game.lockoutList[user.id] || acc, false)){
+    if(room.users.reduce((acc, user) => !question.lockOuts[user.id] || acc, false)){
         socket.to(room.name).emit('opponent-wrong-answer');
         socket.emit('wrong-answer');
         room.game.questionActive = true;
@@ -595,8 +652,10 @@ function cleanupIncorrectPlayerBuzz(room, socket){
 
 // Ends the question for the given room
 function endQuestion(room){
+
     // Mark the question as completed
     room.game.values[room.game.question.index] = null;
+
     // Switch the listeners, rebroadcast the new board values
     room.users.forEach((user) => {
         removeQuestionListeners(user);
