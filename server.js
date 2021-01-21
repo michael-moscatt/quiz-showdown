@@ -248,7 +248,8 @@ function setBoardListeners(user, room){
     });
 
     socket.on('request-take-turn', (index) => {
-        if(room.game.turn == user && room.game.values[index] && !room.game.questionActive){
+        if(room.game.turn == user && room.game.values[index] && room.state==='board'){
+            room.state = 'question';
             startQuestion(room, user, index);
         }
     });
@@ -290,6 +291,29 @@ function removeQuestionListeners(user){
     socket.removeAllListeners('request-buzz');
 }
 
+// Set the listener for players who is actively answering
+function setAnswerListeners(user, room){
+    var socket = user.socket;
+
+    socket.on('answer-stream', (answer) => {
+        room.game.question.playerAnswer = answer;
+        socket.to(room.name).emit('answer-stream', answer);
+    });
+
+    socket.on('final-answer', (answer) => {
+        clearTimeout(room.game.question.playerAnswerTimer);
+        playerAnswer(user, answer, room);
+    }); 
+}
+
+// Remove the listeners for players who is no longer actively answering
+function removeAnswerListeners(user){
+    var socket = user.socket;
+
+    socket.removeAllListeners('answer-stream');
+    socket.removeAllListeners('final-answer');
+}
+
 /* ***************************************** Constructors *****************************************/
 
 function Question(){
@@ -299,6 +323,7 @@ function Question(){
     this.value = 0;
     this.transmissionTimer = null;
     this.timeToLiveTimer = null;
+    this.playerAnswerTimer = null;
     this.playerAnswer = '';
     this.completedTransmission = false;
 }
@@ -397,6 +422,7 @@ function startGame(room){
     room.game.part = 'single';
     room.game.values = getValuesList(room);
     room.game.turn = room.host;
+    room.state = 'board';
     room.users.forEach(user => 
         {
             removeLobbyListeners(user);
@@ -407,11 +433,6 @@ function startGame(room){
 }
 
 /* *********************************** Game Functions *********************************************/
-
-// Checks if the answer for the question is correct
-function verifyAnswer(answer, room){
-    return false;
-}
 
 // Lockout the given user, for the duration if isPermanent is false, 
 // else for the rest of the question
@@ -434,6 +455,7 @@ function modifyScore(room, uid, amount){
 
 // Reads the selected question
 function startQuestion(room, user, index){
+    room.state = 'question';
     let categoryData = room.game.frame[index % 6];
     let category = categoryData.name;
     let questionData = categoryData.cards[Math.floor(index/6)];
@@ -450,6 +472,7 @@ function startQuestion(room, user, index){
     question.wordList = questionData.hint.split(" ");
     question.curIndex = 0;
     question.index = index;
+    question.answer = questionData.answer;
     setTimeout(() => {
         if(questionData.double){
             let socket = user.socket
@@ -487,7 +510,6 @@ function transmitQuestion(room, double, user){
     var string = question.wordList.slice(0,question.curIndex+1).join(" ");
     io.to(room.name).emit('question', string);
     question.curIndex = question.curIndex + 1;
-
     if(question.curIndex == question.wordList.length){
         room.game.question.completedTransmission = true;
         room.game.questionActive = true;
@@ -508,34 +530,33 @@ function transmitQuestion(room, double, user){
 function playerBuzz(user, room){
     let socket = user.socket;
     let question = room.game.question;
+    question.playerAnswer = '';
+    room.game.questionActive = false;
+    // Stop the timers
     if(!question.completedTransmission){
         clearInterval(question.transmissionTimer);
     } else{
         clearTimeout(question.timeToLiveTimer);
     }
+    // Inform the players, set listeners for player who buzzed
     socket.to(room.name).emit('opponent-buzz', user.name);
+    setAnswerListeners(user, room);
     socket.emit('buzz-accepted');
-    room.game.questionActive = false;
-    lockout(user, room, true);
-    question.playerAnswer = '';
 
+    // Ensure player who buzzed will only answer once
+    lockout(user, room, true);
+
+    // Start the timer for the player to answer
     const answerTimer = setTimeout((user, room) => {
         playerAnswer(user, question.playerAnswer, room);
     }, TIME_TO_ANSWER_MS, user, room);
-
-    socket.on('answer-stream', (answer) => {
-        question.playerAnswer = answer;
-        socket.to(room.name).emit('answer-stream', answer);
-    });
-
-    socket.on('final-answer', (answer) => {
-        clearTimeout(answerTimer);
-        playerAnswer(user, answer, room);
-    }); 
 }
 
 // Score the player's answer
 function playerAnswer(user, answer, room){
+    // Remove the listeners for the player who answered
+    removeAnswerListeners(user, room);
+
     let correct = verifyAnswer(answer, room);
     if(correct){
         modifyScore(room, user.id, room.game.question.value);
@@ -547,16 +568,20 @@ function playerAnswer(user, answer, room){
     }
 }
 
+// Checks if the answer for the question is correct
+function verifyAnswer(answer, room){
+    return room.game.question.answer === answer;
+}
+
 // Cleans up after a player buzzes incorrectly
 function cleanupIncorrectPlayerBuzz(room, socket){
-    socket.removeAllListeners('answer-stream');
-    socket.removeAllListeners('final-answer');
-
     var question = room.game.question;
+    // Check if anyone else can still answer the question
     if(room.users.reduce((acc, user) => !room.game.lockoutList[user.id] || acc, false)){
         socket.to(room.name).emit('opponent-wrong-answer');
         socket.emit('wrong-answer');
         room.game.questionActive = true;
+        // Finish the question if the buzz was an interrupt
         if(question.completedTransmission){
             question.timeToLiveTimer = setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
         } else{
@@ -570,13 +595,16 @@ function cleanupIncorrectPlayerBuzz(room, socket){
 
 // Ends the question for the given room
 function endQuestion(room){
+    // Mark the question as completed
     room.game.values[room.game.question.index] = null;
+    // Switch the listeners, rebroadcast the new board values
     room.users.forEach((user) => {
         removeQuestionListeners(user);
         setBoardListeners(user, room);
         broadcastQuestionValues(user, room);
     });
     room.game.questionActive = false;
+    room.state = 'board';
     io.to(room.name).emit('question-over');
 }
 

@@ -14,10 +14,8 @@ function useEventListener(eventName, handler, element = window){
       const eventListener = event => savedHandler.current(event);
 
       element.addEventListener(eventName, eventListener);
-      console.log("Added event listener");
       return () => {
         element.removeEventListener(eventName, eventListener);
-        console.log("Removed event listener");
       };
     },
     [eventName, element] 
