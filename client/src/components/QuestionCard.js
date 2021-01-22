@@ -3,6 +3,7 @@ import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
 import AnswerModule from './AnswerModule';
 import { makeStyles } from "@material-ui/core/styles";
+import parse from 'html-react-parser';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -42,7 +43,7 @@ function QuestionCard(props){
         </Grid>
         <Grid item className={classes.question} xs={12}>
           <Typography variant="h6">
-            {props.question}
+            {parse(props.question)}
           </Typography>
         </Grid>
         <Grid item className={classes.answer} xs={12}>

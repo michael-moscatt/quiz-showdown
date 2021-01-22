@@ -57,9 +57,21 @@ def main(args):
         frames = {}
 
         # Pull out info from single, double, and final Jeopardy
-        frames['single'] = get_category(soup.find(id="jeopardy_round").table, False)
-        frames['double'] = get_category(soup.find(id="double_jeopardy_round").table, False)
-        frames['final'] = get_category(soup.find(id="final_jeopardy_round").table, True)
+        single_jeopardy = soup.find(id="jeopardy_round")
+        if single_jeopardy:
+            frames['single'] = get_category(single_jeopardy.table, False)
+        else:
+            frames['single'] = None
+        double_jeopardy = soup.find(id="double_jeopardy_round")
+        if double_jeopardy:
+            frames['double'] = get_category(double_jeopardy.table, False)
+        else:
+            frames['double'] = None
+        final_jeopardy = soup.find(id="final_jeopardy_round")
+        if final_jeopardy:
+            frames['final'] = get_category(final_jeopardy.table, True)
+        else:
+            frames['final'] = None
 
         # Add match dict to appropriate season
         season_list.append(make_match(match_number, match_date, frames))
@@ -104,6 +116,32 @@ def make_match(id, date, frames):
     }
     return match
 
+
+def get_hint(card_soup):
+    card_text = card_soup.find(class_="clue_text")
+    hint = ''
+    if(card_text):
+        if(len(list(card_text.children)) > 1):
+            result = []
+            children = card_text.children
+            for child in children:
+                if(child.name):
+                    if(child.name == 'br'):
+                        result.append('<br>')
+                    else:
+                        result.append(child.get_text())
+                else:
+                    result.append(str(child.string))
+            hint = ''.join(result)
+        else:
+            hint = card_text.get_text()
+
+        # Condense multiple spaces
+        hint = re.sub(r'\ +', ' ', hint)
+    else:
+        hint = None
+    return hint
+
 # Returns a list of the categories and nested cards within them
 def get_category(table, is_final):
     categories_list = []
@@ -116,7 +154,7 @@ def get_category(table, is_final):
     while categories_soup:
         category = {}
         category_soup = categories_soup.pop(0)
-        category["name"] = category_soup.find(class_="category_name").string
+        category["name"] = category_soup.find(class_="category_name").get_text()
         category["comments"] = category_soup.find(class_="category_comments").string
         category["cards"] = []
         categories_list.append(category)
@@ -125,17 +163,14 @@ def get_category(table, is_final):
     pos = 1
     while cards_soup:
         for category in categories_list:
+
             # Load card hint
             card_soup = cards_soup.pop(0)
+            hint = get_hint(card_soup)
             card = {
-                "position": pos
+                "position": pos,
+                "hint": hint
             }
-            card_text = card_soup.find(class_="clue_text")
-            if(card_text):
-                card["hint"] = card_text.get_text()
-            else:
-                card["hint"] = None # Represents no card
-
             # Load card answer
             answer_text_soup = card_soup.find("div")
             answer_regex = re.compile(r'''
@@ -150,7 +185,7 @@ def get_category(table, is_final):
             if answer_text_soup:
                 answer_text = re.search(answer_regex, answer_text_soup["onmouseover"])
                 if answer_text:
-                    card["answer"] = answer_text.group(1)
+                    card["answer"] = answer_text.group(1).replace("<i>", "").replace("<I>", "").replace("</I>", "")
                 else:
                     card["answer"] = "!Error!: Unable to parse answer" # Represents inability to pull out answer
             else:
