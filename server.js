@@ -9,10 +9,15 @@ const port = process.env.PORT || 5000;
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 
+// Local
+const verifyAnswer = require('./functions/verifyAnswer');
+
 // Misc
 var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
+
+
 
 /* ********************************************* Globals ******************************************/
 
@@ -608,13 +613,13 @@ function playerBuzz(user, room){
 function playerAnswer(user, room){
 
     let question = room.game.question;
-    let answer = question.playerAnswer;
+    let givenAnswer = question.playerAnswer;
 
     // Remove the listeners for the player who answered
     removeAnswerListeners(user, room);
 
     // Check the answer, modifying the score appropriately
-    let correct = verifyAnswer(answer, room);
+    let correct = verifyAnswer(question.answer, givenAnswer);
     if(correct){
         modifyScore(room, user.id, room.game.question.value);
         room.game.turn = user;
@@ -623,11 +628,6 @@ function playerAnswer(user, room){
         modifyScore(room, user.id, room.game.question.value*-1);
         cleanupIncorrectPlayerBuzz(room, user.socket);
     }
-}
-
-// Checks if the answer for the question is correct
-function verifyAnswer(answer, room){
-    return room.game.question.answer === answer;
 }
 
 // Cleans up after a player buzzes incorrectly
@@ -644,7 +644,7 @@ function cleanupIncorrectPlayerBuzz(room, socket){
         } else{
             question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
         }
-        
+
     } else{
         endQuestion(room);
     }

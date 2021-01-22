@@ -32,3 +32,4 @@ client/.eslintcache
 scripts/scraper2.py
 scripts/test.py
 client/debug.log
+scripts/checker2.coffee
