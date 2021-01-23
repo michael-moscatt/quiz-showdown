@@ -17,19 +17,18 @@ var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
 
-
-
 /* ********************************************* Globals ******************************************/
 
-const DATA_FILE_NAME = "data.json";
+const DATA_FILE_NAME = "result.json";
 const DATA_FILE_PATH = "data";
 const ROOM_LIMIT = 4;
 const POINT_VALUES = [200,400,600,800,1000];
 const TIME_AFTER_Q_ENDS_MS = 5000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD_MS = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT_MS = 250; // Lockout period for an illegal buzz
-const TIME_TO_ANSWER_MS = 500000; // Time player has to answer after buzzing
+const TIME_TO_ANSWER_MS = 5000; // Time player has to answer after buzzing
 const TIME_AFTER_SELECTION_MS = 1500; // Time after player selects question before it's read
+const TIME_DISPLAY_ANSWER_MS = 3000; // How long to reveal the answer for
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
 var rooms = {}; // roomName -> room
@@ -42,16 +41,17 @@ fs.readFile(DATA_FILE_PATH + '/' + DATA_FILE_NAME, 'utf8', function (err, data) 
         throw Error('Could not load data from file')
     }
     dataObj = JSON.parse(data);
+    pullMatchInfo();
 });
 
 // Attempt to pull out season, id, and date from all matches
-var readInterval = setInterval(tryToRead, 100);
-function tryToRead() {
-    if ('35' in dataObj) {
-        clearInterval(readInterval);
-        pullMatchInfo();
-    }
-}
+// var readInterval = setInterval(tryToRead, 100);
+// function tryToRead() {
+//     if ('35' in dataObj) {
+//         clearInterval(readInterval);
+//         pullMatchInfo();
+//     }
+// }
 
 // Create the matchInfo object that holds all questions
 function pullMatchInfo(){
@@ -653,8 +653,22 @@ function cleanupIncorrectPlayerBuzz(room, socket){
 // Ends the question for the given room
 function endQuestion(room){
 
+    room.users.forEach((user) => {
+        removeQuestionListeners(user);
+    });
+    room.game.questionActive = false;
+    
+    // Reveal the answer, set timer for how long it displays for
+    io.to(room.name).emit('question-answer', room.game.question.answer);
+    setTimeout(sendBackToBoard, TIME_DISPLAY_ANSWER_MS, room);
+}
+
+// Switch players back to the newly updated game board
+function sendBackToBoard(room){
+
     // Mark the question as completed
     room.game.values[room.game.question.index] = null;
+    room.state = 'board';
 
     // Switch the listeners, rebroadcast the new board values
     room.users.forEach((user) => {
@@ -662,8 +676,8 @@ function endQuestion(room){
         setBoardListeners(user, room);
         broadcastQuestionValues(user, room);
     });
-    room.game.questionActive = false;
-    room.state = 'board';
+
+    // Send the users back to the board
     io.to(room.name).emit('question-over');
 }
 
@@ -678,7 +692,7 @@ function getValues(room, index, type = 'unselected'){
         for(j=0;j<6;j++){
             let total = (i*6)+j;
             let defType = 'unselected';
-            if(index && total==index){
+            if(index != null && total==index){
                 defType = type;
             }
             row.push([room.game.values[total], defType]);

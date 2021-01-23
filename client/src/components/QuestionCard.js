@@ -8,7 +8,7 @@ import parse from 'html-react-parser';
 const useStyles = makeStyles((theme) => ({
   root: {
     width: '100%',
-    height: '100%'
+    height: 400
   },
   container: {
     height: '100%'

@@ -32,7 +32,10 @@ function GamePage() {
 
     function setEventListeners() {
         socket.on('categories', cat => setCategories(cat));
-        socket.on('question-values', vals => setValues(vals));
+        socket.on('question-values', vals => {
+            setValues(vals);
+            console.log(vals);
+        });
         socket.on('turn-name', name => setTurnName(name));
         socket.on('name', name => setName(name));
         socket.on('daily-double', (max) => {
@@ -83,10 +86,10 @@ function GamePage() {
         <Grid container justify="center">
             <Grid item xs={12} lg={10}>
                 <Box className={classes.box} display="flex" justifyContent="center" m={1}>
-                    {mode === 'board' ? 
+                    {mode === 'board' &&
                     <Gameboard categories={categories} values={values} handleClick={handleValueCard}
-                        active={myTurn} />
-                         : 
+                        active={myTurn} />}
+                    {mode === 'question' && 
                     <QuestionBoard category={category} value={value} question={question}/>}
                 </Box>
             </Grid>
