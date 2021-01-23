@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import Paper from '@material-ui/core/Paper';
 import { SocketContext } from '../socket-context';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
@@ -10,6 +10,8 @@ import Select from '@material-ui/core/Select';
 import Grid from '@material-ui/core/Grid';
 import FormControl from '@material-ui/core/FormControl';
 import Box from '@material-ui/core/Box';
+import Popover from '@material-ui/core/Popover';
+import Typography from '@material-ui/core/Typography';
 import { makeStyles } from "@material-ui/core/styles";
 
 const useStyles = makeStyles((theme) => ({
@@ -20,6 +22,9 @@ const useStyles = makeStyles((theme) => ({
   formControlMatch: {
     minWidth: 170,
     margin: theme.spacing(1)
+  },
+  errorTypography: {
+    padding: theme.spacing(2),
   }
 }));
 
@@ -34,6 +39,10 @@ function OptionsPanel(){
   const [selectedSeason, setSelectedSeason] = useState('');
   const [matches, setMatches] = useState([]);
   const [selectedMatch, setSelectedMatch] = useState('');
+  const [error, setError] = useState('');
+  const [errorOpen, setErrorOpen] = useState(false);
+
+  const errorRef = useRef(null);
 
   const setEventListeners = function () {
     socket.on('is-host-response', response => setOptionsEnabled(response));
@@ -47,6 +56,11 @@ function OptionsPanel(){
         setSelectedSeason(response);
       });
     socket.on('setting-match-change', response => setSelectedMatch(response));
+    socket.on('match-error', (error) => {
+      setError(error);
+      setErrorOpen(true);
+      setSelectedMatch('');
+    });
     
     return function removeEventListeners(){
       socket.off('is-host-response');
@@ -55,6 +69,7 @@ function OptionsPanel(){
       socket.off('setting-interrupt-change');
       socket.off('setting-season-change');
       socket.off('setting-match-change');
+      socket.off('match-error');
     }
   }
   useEffect(setEventListeners, [socket]);
@@ -95,6 +110,10 @@ function OptionsPanel(){
 
   function handleStart(){
     socket.emit('start-game-request');
+  }
+
+  function handleErrorClose(){
+    setErrorOpen(false);
   }
 
   return (
@@ -152,21 +171,37 @@ function OptionsPanel(){
                 </Grid>
                 <Grid item>
                   <FormControl className={classes.formControlMatch}>
-                    <InputLabel id="select-match-label">Match</InputLabel>
+                    <InputLabel id="select-match-label" >Match</InputLabel >
                       <Select
                         labelId="select-match-label"
                         id="select-match"
                         value={selectedMatch}
                         onChange={handleMatchChange}
                         disabled={!optionsEnabled}
+                        ref={errorRef}
                       >
                         {matches.map((match) =>
                           <MenuItem key={match.id} value={match.id}>{match.date}
                             <span>&nbsp;&nbsp;&nbsp;</span>#{match.id}
                           </MenuItem>)}
                       </Select>
-                  </FormControl>
-                </Grid>
+                    </FormControl>
+                    <Popover
+                      open={errorOpen}
+                      anchorEl={errorRef.current}
+                      onClose={handleErrorClose}
+                      anchorOrigin={{
+                        vertical: 'center',
+                        horizontal: 'center',
+                      }}
+                      transformOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'left',
+                      }}
+                    >
+                      <Typography className={classes.errorTypography}>{error}</Typography>
+                    </Popover>
+                  </Grid>
               </Grid>
             </Grid>
           </Grid>

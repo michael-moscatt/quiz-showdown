@@ -183,9 +183,13 @@ function setLobbyListeners(user, room){
         if('host' in room && room.host == user && room.state === 'lobby'
             && 'season' in room.game && room.game.season in dataObj){
             // Ensure match exists in data object
-            if ('single' in getFrames(room.game.season, request)){
+            let frames = getFrames(room.game.season, request);
+            if (frames['single'] && frames['double'] && frames['final']){
                 room.game.match = request;
                 socket.to(room.name).emit('setting-match-change', request);
+            } else{
+                socket.emit('match-error', 
+                    "Requested match is missing too many questions, please choose another");
             }
         }
     });
@@ -208,7 +212,7 @@ function setLobbyListeners(user, room){
 
     socket.on('start-game-request', () => {
         if('host' in room && user === room.host && room.state === 'lobby'
-            && 'match' in room.game){
+            && room.game['match']){
             startGame(room);     
         }
     });
@@ -456,12 +460,11 @@ function newHost(){
     // broadcast is-Host-Response
 }
 
-// Sets up the game, zeroing out scores, getting the frames, set up single jeopardy
+// Sets up the game, zeroing out scores, getting the frames, set up single round
 // Set turn to host, remove listeners for lobby actions
 function startGame(room){
 
     room['users'].forEach((user) => room.game.scores[user.id] = 0);
-    room.state = 'game';
     room.game.frames = getFrames(room.game.season, room.game.match);
     room.game.frame = room.game.frames['single'];
     room.game.part = 'single';
@@ -694,13 +697,6 @@ function endQuestion(room){
     setTimeout(sendBackToBoard, TIME_DISPLAY_ANSWER_MS, room);
 }
 
-// Ends the game
-function endGame(room) {
-    room.users.forEach((user) => {
-        removeGameListeners(user);
-    });
-}
-
 // Switch players back to the newly updated game board
 function sendBackToBoard(room){
 
@@ -715,8 +711,45 @@ function sendBackToBoard(room){
         broadcastQuestionValues(user, room);
     });
 
+    // Check to see if there are no questions left in the round
+    if(!room.game.values.some(val => val)){
+        if(room.game.part === 'single'){
+            startDouble(room);
+        }
+    }
+
     // Send the users back to the board
     io.to(room.name).emit('question-over');
+}
+
+// Set up double round, grabbing the new questions, and setting turn to player in last
+function startDouble(room){
+
+    // Set turn to the user in last place
+    let userInLast = room['users'].reduce((prev, cur) => 
+        room.game.scores[prev.id] < room.game.scores[cur.id] ? prev : cur);
+    room.game.turn = userInLast;
+
+    // Get the double round questions
+    room.game.frame = room.game.frames['double'];
+    room.game.part = 'double';
+    room.game.values = getValuesList(room);
+
+    // Inform the players of the new questions and categories
+    let categories = getCategories(room);
+    room.users.forEach((user) => {
+        broadcastQuestionValues(user, room);
+        user.socket.emit('categories', categories);
+    });
+
+    console.log("Room %s: Double round started", room.name);
+}
+
+// Ends the game
+function endGame(room) {
+    room.users.forEach((user) => {
+        removeGameListeners(user);
+    });
 }
 
 // Gets the question values for a given room, pairing with a status
@@ -744,9 +777,13 @@ function getValues(room, index, type = 'unselected'){
 function getValuesList(room) {
     var mult = room.game.part == 'single' ? 1 : 2;
     var colWise = room.game['frame'].map((category) =>
-        category.cards.map((card) =>
-            card.answer ? POINT_VALUES[card.position - 1] * mult : null
-        )
+        category.cards.map((card) => {
+            if (card.answer && card.hint) {
+                return POINT_VALUES[card.position - 1] * mult;
+            } else {
+                return null;
+            } 
+        })
     );
     var listWise = [];
     for(i = 0;i < colWise[0].length;i++){
