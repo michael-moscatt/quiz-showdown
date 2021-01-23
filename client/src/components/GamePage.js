@@ -29,13 +29,11 @@ function GamePage() {
     const [question, setQuestion] = useState('');
     const [wagerDialogOpen, setWagerDialogOpen] = useState(false);
     const [wagerMax, setWagerMax] = useState(0);
+    const [isHost, setIsHost] = useState(false);
 
     function setEventListeners() {
         socket.on('categories', cat => setCategories(cat));
-        socket.on('question-values', vals => {
-            setValues(vals);
-            console.log(vals);
-        });
+        socket.on('question-values', vals => setValues(vals));
         socket.on('turn-name', name => setTurnName(name));
         socket.on('name', name => setName(name));
         socket.on('daily-double', (max) => {
@@ -50,6 +48,7 @@ function GamePage() {
         });
         socket.on('question', question => setQuestion(question));
         socket.on('question-over', () => setMode('board'));
+        socket.on('is-host', (isHost) => setIsHost(isHost));
         return function removeEventListeners() {
             socket.off('categories');
             socket.off('question-values');
@@ -59,6 +58,7 @@ function GamePage() {
             socket.off('question-info');
             socket.off('question');
             socket.off('question-over');
+            socket.off('is-host');
         }
     }
     useEffect(setEventListeners, [socket]);
@@ -67,6 +67,7 @@ function GamePage() {
     useEffect(()=>socket.emit('request-question-values'), [socket]);
     useEffect(()=>socket.emit('request-turn-name'), [socket]);
     useEffect(()=>socket.emit('request-name'), [socket]);
+    useEffect(()=>socket.emit('request-is-host'), [socket]);
     useEffect(()=>setMyTurn(turnName === name), [turnName, name]);
 
     function handleValueCard(index){
@@ -95,7 +96,7 @@ function GamePage() {
             </Grid>
             <Grid item xs={12} lg={10}>
                 <Box display="flex" justifyContent="center" m={1}>
-                    <Scoreboard turn={turnName}/>
+                    <Scoreboard turn={turnName} isHost={isHost}/>
                     <DDWagerDialog open={wagerDialogOpen} handleClose={handleWagerDialogClose}
                         max={wagerMax} handlePlaceWager={handlePlaceWager} />
                 </Box>

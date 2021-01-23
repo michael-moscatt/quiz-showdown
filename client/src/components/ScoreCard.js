@@ -1,3 +1,4 @@
+import React from 'react';
 import Card from '@material-ui/core/Card';
 import CardHeader from '@material-ui/core/CardHeader';
 import CardContent from '@material-ui/core/CardContent';
@@ -6,6 +7,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import Grid from '@material-ui/core/Grid';
 import TurnIndicator from './TurnIndicator';
 import Box from '@material-ui/core/Box';
+import HostOverrideHeader from './HostOverrideHeader';
+
 
 const useStyles = makeStyles((theme) => ({
   card: {
@@ -31,8 +34,8 @@ const useStyles = makeStyles((theme) => ({
 
 function ScoreCard(props) {
   const classes = useStyles();
-  const cardText = props.score < 0 ? `-$${props.score*-1}` : `$${props.score}`
 
+  const cardText = props.score < 0 ? `-$${props.score*-1}` : `$${props.score}`
 
   return (
     <Grid container justify="center">
@@ -44,7 +47,11 @@ function ScoreCard(props) {
       <Grid item xs={12}>
         <Box className={classes.scoreBox} display="flex" justifyContent="center">
           <Card className={classes.card}>
-            <CardHeader className={classes.header} title={props.name} />
+            {props.isHost && <HostOverrideHeader name={props.name} />}
+            {!props.isHost && 
+              <CardHeader className={classes.header}
+                title={props.name}
+              />}
             <CardContent className={classes.content}>
               <Typography variant="h5">
                 {cardText}

@@ -21,7 +21,8 @@ function Scoreboard(props){
     return (
         scores.map((pair) => {
             const isTurn = props.turn === pair.name
-            return <ScoreCard name={pair.name} score={pair.score} turn={isTurn} key={pair.name}/>
+            return <ScoreCard name={pair.name} score={pair.score} 
+                        turn={isTurn} key={pair.name} isHost={props.isHost}/>
         })
     );
 }

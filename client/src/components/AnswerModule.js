@@ -27,6 +27,15 @@ const useStyles = makeStyles((theme) => ({
     boxSizing: 'border-box',
     display: 'flex', 
     alignItems: 'flex-end'
+  },
+  answerBox: {
+    width: '100%',
+    display: 'flex', 
+    justifyContent: 'center'
+  },
+  typography: {
+    flexGrow: 1,
+    textAlign: "center"
   }
 }));
 
@@ -37,9 +46,11 @@ function AnswerModule() {
   const [mode, setMode] = useState('default');
   const [someoneBuzzed, setsomeoneBuzzed] = useState(true);
   const [lockedOut, setlockedOut] = useState(false);
-  const [opponentText, setOpponentText] = useState('');
+  const [opponentAnswer, setOpponentAnswer] = useState('');
   const [opponentName, setopponentName] = useState('');
+  const [myAnswer, setMyAnswer] = useState('');
   const [answer, setAnswer] = useState('');
+
 
   useEffect(() => mode === 'default' ? setsomeoneBuzzed(false) : setsomeoneBuzzed(true), [mode]);
 
@@ -47,10 +58,10 @@ function AnswerModule() {
     socket.on('opponent-buzz', (name) => {
       setMode('opponent');
       setopponentName(name);
-      setOpponentText('');
+      setOpponentAnswer('');
     });
     socket.on('buzz-accepted', () => setMode('self'));
-    socket.on('answer-stream', (text) => setOpponentText(text));
+    socket.on('answer-stream', (text) => setOpponentAnswer(text));
     socket.on('lockout-start', () => setlockedOut(true));
     socket.on('lockout-end', () => setlockedOut(false));
     socket.on('wrong-answer', () => {
@@ -58,6 +69,10 @@ function AnswerModule() {
       setMode('default');
     });
     socket.on('opponent-wrong-answer', () => setMode('default'));
+    socket.on('question-answer', (answer) => {
+      setAnswer(answer);
+      setMode('answer');
+    });
     return function removeEventListeners() {
       socket.off('opponent-buzz');
       socket.off('buzz-accepted');
@@ -66,22 +81,23 @@ function AnswerModule() {
       socket.off('lockout-end');
       socket.off('wrong-answer');
       socket.off('opponent-wrong-answer');
+      socket.off('question-answer');
     }
   }
   useEffect(setEventListeners, [socket]);
 
-  useEffect(() => socket.emit('answer-stream', answer), [socket, answer]);
+  useEffect(() => socket.emit('answer-stream', myAnswer), [socket, myAnswer]);
 
   function handleBuzz(){
     socket.emit('request-buzz');
   }
 
   function handleChange(e){
-    setAnswer(e.target.value);
+    setMyAnswer(e.target.value);
   }
 
   function handleSubmit(){
-    socket.emit('final-answer', answer);
+    socket.emit('final-answer', myAnswer);
   }
 
   useEventListener('keydown', (event) => {
@@ -91,7 +107,7 @@ function AnswerModule() {
       }
     } else if(event.key === "Enter"){
       if(mode === 'self'){
-        socket.emit('final-answer', answer);
+        socket.emit('final-answer', myAnswer);
       }
     }
   });
@@ -114,14 +130,22 @@ function AnswerModule() {
 
   const opponentBuzz = 
     <Box className={classes.textBox} p={3}>
-      <Typography><strong>{opponentName}</strong>:&nbsp;{opponentText}</Typography>
+      <Typography><strong>{opponentName}</strong>:&nbsp;{opponentAnswer}</Typography>
+    </Box>
+
+  const revealAnswer = 
+    <Box className={classes.answerBox} justifyContent="center" p={3} >
+      <Typography className={classes.typography} variant="h6" >
+        <strong>{answer}</strong>
+      </Typography>
     </Box>
 
   return (
     <Box className={classes.root}>
-      {mode === 'default' ? buzzer : false } 
-      {mode === 'self' ? selfBuzz : false }
-      {mode === 'opponent' ? opponentBuzz : false }
+      {mode === 'default' && buzzer} 
+      {mode === 'self' && selfBuzz}
+      {mode === 'opponent' && opponentBuzz}
+      {mode === 'answer' && revealAnswer}
     </Box>
   );
 }

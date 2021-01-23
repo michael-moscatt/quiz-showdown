@@ -23,10 +23,10 @@ const DATA_FILE_NAME = "result.json";
 const DATA_FILE_PATH = "data";
 const ROOM_LIMIT = 4;
 const POINT_VALUES = [200,400,600,800,1000];
-const TIME_AFTER_Q_ENDS_MS = 5000; // Time after question ends before buzzing is disallowed
+const TIME_AFTER_Q_ENDS_MS = 7000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD_MS = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT_MS = 250; // Lockout period for an illegal buzz
-const TIME_TO_ANSWER_MS = 5000; // Time player has to answer after buzzing
+const TIME_TO_ANSWER_MS = 7000; // Time player has to answer after buzzing
 const TIME_AFTER_SELECTION_MS = 1500; // Time after player selects question before it's read
 const TIME_DISPLAY_ANSWER_MS = 3000; // How long to reveal the answer for
 var dataObj;
@@ -228,6 +228,30 @@ function removeLobbyListeners(user){
     socket.removeAllListeners('start-game-request');
 }
 
+
+// Set the listeners that exist for the entire game
+function setGameListeners(user, room){
+    var socket = user.socket;
+
+    socket.on('host-override', (name, type) => {
+        if(room.settings.override && room.host === user && room.game.question && (type === 'add' || type === 'sub')){
+            let usersWithThatName = room.users.filter((user) => user.name === name);
+            modifier = type === 'add' ? 1 : -1;
+            if(usersWithThatName){
+                let amount = room.game.question.value * modifier;
+                modifyScore(room, usersWithThatName[0].id, amount);
+            }
+        }
+    });
+}
+
+// Removes the listeners that exist for the whole game
+function removeGameListeners(user){
+    var socket = user.socket;
+
+    socket.removeAllListeners('host-override');
+}
+
 // Set the listeners for a user on the board
 function setBoardListeners(user, room){
     var socket = user.socket;
@@ -258,6 +282,11 @@ function setBoardListeners(user, room){
             setUpQuestion(user, room, index);
         }
     });
+
+    socket.on('request-is-host', () => {
+        let isHost = room.host === user;
+        socket.emit('is-host', isHost);
+    });
 }
 
 // Remove the listeners for a user who is no looking at the board
@@ -270,6 +299,7 @@ function removeBoardListeners(user){
     socket.removeAllListeners('request-question-values');
     socket.removeAllListeners('request-turn-name');
     socket.removeAllListeners('request-take-turn');
+    socket.removeAllListeners('request-is-host');
 }
 
 // Set the listener for players who can buzz
@@ -442,6 +472,7 @@ function startGame(room){
         {
             removeLobbyListeners(user);
             setBoardListeners(user, room);
+            setGameListeners(user, room);
         });
     io.to(room.name).emit('start-game');
     console.log("Room %s: Game started", room.name);
@@ -661,6 +692,13 @@ function endQuestion(room){
     // Reveal the answer, set timer for how long it displays for
     io.to(room.name).emit('question-answer', room.game.question.answer);
     setTimeout(sendBackToBoard, TIME_DISPLAY_ANSWER_MS, room);
+}
+
+// Ends the game
+function endGame(room) {
+    room.users.forEach((user) => {
+        removeGameListeners(user);
+    });
 }
 
 // Switch players back to the newly updated game board
