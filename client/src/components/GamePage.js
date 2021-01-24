@@ -57,6 +57,10 @@ function GamePage() {
             setCategory(category);
             setMode('final');  
         });
+        socket.on('final-time-up', (msg) => {
+            setCategory(msg);
+            setQuestion('');
+        });
         return function removeEventListeners() {
             socket.off('categories');
             socket.off('question-values');
@@ -68,6 +72,7 @@ function GamePage() {
             socket.off('question-over');
             socket.off('is-host');
             socket.off('start-final');
+            socket.off('final-time-up');
         }
     }
     useEffect(setEventListeners, [socket]);
@@ -80,6 +85,7 @@ function GamePage() {
     useEffect(()=>setMyTurn(turnName === name), [turnName, name]);
 
     function handleValueCard(index){
+        console.log("Request take turn");
         socket.emit('request-take-turn', index);
     }
 

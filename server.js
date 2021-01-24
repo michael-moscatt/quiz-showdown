@@ -16,6 +16,7 @@ const verifyAnswer = require('./functions/verifyAnswer');
 var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
+const { clear } = require('console');
 
 /* ********************************************* Globals ******************************************/
 
@@ -23,14 +24,16 @@ const DATA_FILE_NAME = "result.json";
 const DATA_FILE_PATH = "data";
 const ROOM_LIMIT = 4;
 const POINT_VALUES = [200,400,600,800,1000];
-const TIME_AFTER_Q_ENDS_MS = 7000; // Time after question ends before buzzing is disallowed
-const TIME_AFTER_Q_ENDS_DD_MS = 10000; // Time after a question ends before buzzing is disallowed DD
-const TIME_LOCKOUT_MS = 250; // Lockout period for an illegal buzz
-const TIME_TO_ANSWER_MS = 70000; // Time player has to answer after buzzing
-const TIME_AFTER_SELECTION_MS = 1500; // Time after player selects question before it's read
-const TIME_DISPLAY_ANSWER_MS = 3000; // How long to reveal the answer for
-const TIME_BEFORE_REQUEST_FINAL_WAGER_MS = 2000; // Time before requesting final wagers
-const TIME_FINAL_ROUND_MS = 15000; // Time for final round answers
+const TIME_AFTER_Q_ENDS = 7000; // Time after question ends before buzzing is disallowed
+const TIME_AFTER_Q_ENDS_DD = 10000; // Time after a question ends before buzzing is disallowed DD
+const TIME_LOCKOUT = 250; // Lockout period for an illegal buzz
+const TIME_TO_ANSWER = 70000; // Time player has to answer after buzzing
+const TIME_AFTER_SELECTION = 1500; // Time after player selects question before it's read
+const TIME_DISPLAY_ANSWER = 3000; // How long to reveal the answer for
+const TIME_BEFORE_REQUEST_FINAL_WAGER = 2000; // Time before requesting final wagers
+const TIME_FINAL_ROUND = 15000; // Time for final round answers
+const TIME_AFTER_FINAL_ROUND_BEFORE_REVEALS = 2000; // Time after final round before showing answers
+const TIME_BETWEEN_FINAL_REVEALS = 8000; // Time between revealing each players final answer / score
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
 var rooms = {}; // roomName -> room
@@ -290,7 +293,9 @@ function setBoardListeners(user, room){
     });
 
     socket.on('request-take-turn', (index) => {
+        console.log("Someone requested take turn");
         if(room.game.turn == user && room.game.values[index] && room.state==='board'){
+            console.log("Allowing them to take turn");
             room.state = 'question';
             setUpQuestion(user, room, index);
         }
@@ -386,15 +391,18 @@ function setFinalAnswerListeners(user, room){
     socket.on('final-answer', (answer) => {
         room.game.finalAnswers[user.id] = answer;
 
+        // Inform the user that their answer has been accepted
+        socket.emit('final-answer-accepted');
+
+        // Remove the listener so the answer cannot be changed
+        socket.removeAllListeners('final-answer');
+
         // Check to see if everyone has submitted an answer, so the answer can be revealed
         // Clear the timer if this is the case
         if(!room.users.some(user => !(user.id in room.game.finalAnswers))){
             clearTimeout(room.game.timeToLiveTimer);
             scoreFinalAnswers(room);
         }
-
-        // Remove the listener so the answer cannot be changed
-        socket.removeAllListeners('final-answer');
     });
 }
 
@@ -546,7 +554,7 @@ function lockout(user, room, isPermanent){
         setTimeout((user, room) => {
             room.game.question.lockOuts[user.id] = false;
             socket.emit('lockout-end');
-        }, TIME_LOCKOUT_MS, user, room);
+        }, TIME_LOCKOUT, user, room);
     }
 }
 
@@ -581,9 +589,9 @@ function setUpQuestion(user, room, index){
 
     // If DD get the wager, if not then start the question
     if(double){
-        setTimeout(getDailyDoubleWager, TIME_AFTER_SELECTION_MS, room);
+        setTimeout(getDailyDoubleWager, TIME_AFTER_SELECTION, room);
     } else{
-        setTimeout(startQuestion, TIME_AFTER_SELECTION_MS, room);
+        setTimeout(startQuestion, TIME_AFTER_SELECTION, room);
     }
 }
 
@@ -656,10 +664,10 @@ function transmitQuestion(room){
                 let user = question.selector;
                 modifyScore(room, user.id, question.value*-1);
                 endQuestion(room);
-            }, TIME_AFTER_Q_ENDS_DD_MS);
+            }, TIME_AFTER_Q_ENDS_DD);
         } else {
             question.timeToLiveTimer =
-                setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
+                setTimeout(endQuestion, TIME_AFTER_Q_ENDS, room);
         }
     }
 }
@@ -693,7 +701,7 @@ function playerBuzz(user, room){
     question.playerAnswerTimer =
         setTimeout(() => {
             playerAnswer(user, room);
-        }, TIME_TO_ANSWER_MS);
+        }, TIME_TO_ANSWER);
 }
 
 // Score the player's answer
@@ -709,7 +717,9 @@ function playerAnswer(user, room){
     let correct = verifyAnswer(question.answer, givenAnswer);
     if(correct){
         modifyScore(room, user.id, room.game.question.value);
-        room.game.turn = user;
+
+        // Give turn to player
+        changeTurn(user, room);
         endQuestion(room);
     } else{
         modifyScore(room, user.id, room.game.question.value*-1);
@@ -727,7 +737,7 @@ function cleanupIncorrectPlayerBuzz(room, socket){
         room.game.questionActive = true;
         // Finish the question if the buzz was an interrupt
         if(question.completedTransmission){
-            question.timeToLiveTimer = setTimeout(endQuestion, TIME_AFTER_Q_ENDS_MS, room);
+            question.timeToLiveTimer = setTimeout(endQuestion, TIME_AFTER_Q_ENDS, room);
         } else{
             question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
         }
@@ -747,7 +757,7 @@ function endQuestion(room){
     
     // Reveal the answer, set timer for how long it displays for
     io.to(room.name).emit('question-answer', room.game.question.answer);
-    setTimeout(sendBackToBoard, TIME_DISPLAY_ANSWER_MS, room);
+    setTimeout(sendBackToBoard, TIME_DISPLAY_ANSWER, room);
 }
 
 // Switch players back to the newly updated game board
@@ -783,7 +793,7 @@ function startDouble(room){
     // Set turn to the user in last place
     let userInLast = room['users'].reduce((prev, cur) => 
         room.game.scores[prev.id] < room.game.scores[cur.id] ? prev : cur);
-    room.game.turn = userInLast;
+    changeTurn(userInLast, room);
 
     // Get the double round questions
     room.game.frame = room.game.frames['double'];
@@ -834,28 +844,75 @@ function startFinal(room){
         if(!room.users.some(user => !(user.id in room.game.finalWagers))){
             transmitFinalQuestion(room);
         }
-    }, TIME_BEFORE_REQUEST_FINAL_WAGER_MS);
+    }, TIME_BEFORE_REQUEST_FINAL_WAGER);
 }
 
 // Transmits the final question to the room
 function transmitFinalQuestion(room){
     let card = room.game.frame.cards[0];
     let question = card.hint;
+    room.game.question.answer = card.answer;
     io.to(room.name).emit('question', question);
     io.to(room.name).emit('request-answer'); // put timer here
     room.game.timeToLiveTimer = setTimeout(() => {
         scoreFinalAnswers(room);
-    }, TIME_FINAL_ROUND_MS);
+    }, TIME_FINAL_ROUND);
 }
 
 // Scores the final answers for the room, then reveals the correct answer
 function scoreFinalAnswers(room){
-
-    // Remove the listeners so users can no longer answer
+    finalInfo = [];
+    
     room.users.forEach((user) => {
+        // Remove the listeners so users can no longer answer
         removeFinalAnswerListeners(user);
-        console.log(room.game.finalAnswers[user.id]);
+
+        // Gather information about their answer
+        let wager = room.game.finalWagers[user.id];
+        let givenAnswer = room.game.finalAnswers[user.id];
+        let correct = verifyAnswer(room.game.question.answer, givenAnswer);
+        let curScore = room.game.scores[user.id];
+        let finalScore = correct ? curScore + wager : curScore - wager;
+        finalInfoObj = {
+            'id': user.id,
+            'name': user.name,
+            'wager': wager,
+            'scoreChange': correct ? wager : wager * -1,
+            'givenAnswer': givenAnswer,
+            'correct': correct,
+            'finalScore': finalScore
+        };
+
+        // Save it
+        finalInfo.push(finalInfoObj);
+        console.log(user.name + ': ' + JSON.stringify(finalInfoObj));
     });
+
+    // Inform the users that the time is up, and we will now see what every wrote
+    io.to(room.name).emit('final-time-up', 'The Answers are in...');
+    setTimeout(() => {
+        sendFinalAnswers(room, finalInfo);
+    }, TIME_AFTER_FINAL_ROUND_BEFORE_REVEALS)
+
+}
+
+// Broadcasts what each user gave as an answer for the final round, their final score
+function sendFinalAnswers(room, finalInfo){
+    var index = 0;
+
+    (function sendFinalInfo() {
+        if(index < finalInfo.length){
+            io.to(room.name).emit('final-info', finalInfo[index]);
+
+            // After a delay, update their score
+            setTimeout(() => {
+                modifyScore(room, finalInfo[index].id, finalInfo[index].scoreChange);
+                index += 1;
+            }, TIME_BETWEEN_FINAL_REVEALS - 1500);
+
+            setTimeout(sendFinalInfo, TIME_BETWEEN_FINAL_REVEALS);
+        }
+    })();
 }
 
 // Ends the game
@@ -958,4 +1015,10 @@ function broadcastUsernames(room){
 // Broadcasts the values of the question for the room
 function broadcastQuestionValues(user, room){
     user.socket.emit('question-values', getValues(room, null));
+}
+
+// Changes turn in the room to the given user
+function changeTurn(user, room){
+    room.game.turn = user;
+    io.to(room.name).emit('turn-name', user.name);
 }

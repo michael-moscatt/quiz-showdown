@@ -42,6 +42,13 @@ const useStyles = makeStyles((theme) => ({
   },
   answer: {
     height: '25%'
+  }, 
+  revealAnswerBox: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    width: '100%'
   }
 }));
 
@@ -53,6 +60,8 @@ function FinalBoard(props) {
   const [wagerOpen, setWagerOpen] = useState(false);
   const [wagerMax, setwagerMax] = useState(0);
   const [finalAnwer, setFinalAnswer] = useState('');
+  const [revealTitle, setRevealTitle] = useState('');
+  const [revealAnswer, setRevealAnswer] = useState('');
 
   function setEventListeners() {
     socket.on('request-final-wager', max => {
@@ -62,10 +71,38 @@ function FinalBoard(props) {
     socket.on('request-answer', () => {
       setMode('answer');
     });
+    socket.on('final-answer-accepted', () => {
+      setMode('question');
+    });
+    socket.on('final-info', (obj) => {
+      setRevealAnswer('');
+      setRevealTitle(obj.name + ' said:');
+      setMode('reveal');
+      setTimeout(() => {
+        setRevealAnswer(obj.givenAnswer);
+      }, 1000);
+      setTimeout(() => {
+        let title = obj.correct ? "Which is correct!" : "Not what we were looking for";
+        setRevealTitle(title);
+      }, 3000);
+      setTimeout(() => {
+        let title = "They wagered $" + obj.wager
+        setRevealTitle(title);
+      }, 4500);
+      setTimeout(() => {
+        let title = "Which brings their final score to:";
+        setRevealTitle(title);
+      }, 6000);
+      setTimeout(() => {
+        setRevealAnswer(obj.finalScore);
+      }, 6500);
+    });
 
     return function removeEventListeners() {
       socket.off('request-final-wager');
       socket.off('request-answer');
+      socket.off('final-answer-accepted');
+      socket.off('final-info');
     }
   }
   useEffect(setEventListeners, [socket]);
@@ -97,6 +134,13 @@ function FinalBoard(props) {
       </Button>
     </Box>
 
+  const revealAnswerBox =
+    <Box className={classes.revealAnswerBox}>
+      <Typography variant="h6">
+        {revealAnswer}
+      </Typography>
+    </Box>
+
   return (
     <Grid container justify="center">
       <Grid item xs={12} sm={11} md={10} lg={8}>
@@ -104,16 +148,18 @@ function FinalBoard(props) {
           <Grid container className={classes.container} justify="center">
             <Grid item className={classes.title} xs={12}>
               <Typography variant="h4">
-                {props.category}
+                {mode !== 'reveal' && props.category}
+                {mode === 'reveal' && revealTitle}
                 <hr></hr>
               </Typography>
             </Grid>
             <Grid item className={classes.question} xs={12}>
-              <Typography variant="h6">
+              {mode !== 'reveal' && <Typography variant="h6">
                 {parse(props.question)}
                 <WagerDialog open={wagerOpen} handleClose={handleWagerClose}
-                  max={wagerMax} handlePlaceWager={handlePlaceWager}/>
-              </Typography>
+                  max={wagerMax} handlePlaceWager={handlePlaceWager} />
+              </Typography>}
+              {mode === 'reveal' && revealAnswerBox}
             </Grid>
             <Grid item className={classes.answer} xs={12}>
               {mode === 'answer' && answerBox}
