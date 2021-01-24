@@ -3,10 +3,11 @@ import { SocketContext } from '../socket-context';
 import Scoreboard from './Scoreboard.js';
 import Gameboard from './Gameboard.js';
 import QuestionBoard from './QuestionBoard.js';
+import FinalBoard from './FinalBoard.js';
 import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
 import { makeStyles } from "@material-ui/core/styles";
-import DDWagerDialog from './DDWagerDialog';
+import WagerDialog from './WagerDialog';
 
 const useStyles = makeStyles((theme) => ({
   box: {
@@ -41,14 +42,21 @@ function GamePage() {
             setWagerDialogOpen(true);
         });
         socket.on('question-info', (category, value) => {
-            setMode('question');
             setQuestion('');
             setCategory(category);
             setValue(value);
+            setMode('question');
         });
         socket.on('question', question => setQuestion(question));
-        socket.on('question-over', () => setMode('board'));
+        socket.on('question-over', () => {
+            setMode('board');
+        });
         socket.on('is-host', (isHost) => setIsHost(isHost));
+        socket.on('start-final', (category) => {
+            setQuestion('');
+            setCategory(category);
+            setMode('final');  
+        });
         return function removeEventListeners() {
             socket.off('categories');
             socket.off('question-values');
@@ -59,6 +67,7 @@ function GamePage() {
             socket.off('question');
             socket.off('question-over');
             socket.off('is-host');
+            socket.off('start-final');
         }
     }
     useEffect(setEventListeners, [socket]);
@@ -92,12 +101,14 @@ function GamePage() {
                         active={myTurn} />}
                     {mode === 'question' && 
                     <QuestionBoard category={category} value={value} question={question}/>}
+                    {mode === 'final' &&
+                    <FinalBoard category={category} question={question} />}
                 </Box>
             </Grid>
             <Grid item xs={12} lg={10}>
                 <Box display="flex" justifyContent="center" m={1}>
                     <Scoreboard turn={turnName} isHost={isHost}/>
-                    <DDWagerDialog open={wagerDialogOpen} handleClose={handleWagerDialogClose}
+                    <WagerDialog open={wagerDialogOpen} handleClose={handleWagerDialogClose}
                         max={wagerMax} handlePlaceWager={handlePlaceWager} />
                 </Box>
             </Grid>

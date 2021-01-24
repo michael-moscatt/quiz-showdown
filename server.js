@@ -26,9 +26,11 @@ const POINT_VALUES = [200,400,600,800,1000];
 const TIME_AFTER_Q_ENDS_MS = 7000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD_MS = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT_MS = 250; // Lockout period for an illegal buzz
-const TIME_TO_ANSWER_MS = 7000; // Time player has to answer after buzzing
+const TIME_TO_ANSWER_MS = 70000; // Time player has to answer after buzzing
 const TIME_AFTER_SELECTION_MS = 1500; // Time after player selects question before it's read
 const TIME_DISPLAY_ANSWER_MS = 3000; // How long to reveal the answer for
+const TIME_BEFORE_REQUEST_FINAL_WAGER_MS = 2000; // Time before requesting final wagers
+const TIME_FINAL_ROUND_MS = 15000; // Time for final round answers
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
 var rooms = {}; // roomName -> room
@@ -247,6 +249,15 @@ function setGameListeners(user, room){
             }
         }
     });
+
+    socket.on('request-scores', () => {
+        broadcastScore(room, false, socket);
+    });
+
+    socket.on('request-name', () => {
+        socket.emit('name', user.name);
+    });
+
 }
 
 // Removes the listeners that exist for the whole game
@@ -254,6 +265,8 @@ function removeGameListeners(user){
     var socket = user.socket;
 
     socket.removeAllListeners('host-override');
+    socket.removeAllListeners('request-scores');
+    socket.removeAllListeners('request-name');
 }
 
 // Set the listeners for a user on the board
@@ -262,10 +275,6 @@ function setBoardListeners(user, room){
 
     socket.on('request-name', () => {
         socket.emit('name', user.name);
-    });
-
-    socket.on('request-scores', () => {
-        broadcastScore(room, false, socket);
     });
 
     socket.on('request-categories', () => {
@@ -298,7 +307,6 @@ function removeBoardListeners(user){
     var socket = user.socket;
 
     socket.removeAllListeners('request-name');
-    socket.removeAllListeners('request-scores');
     socket.removeAllListeners('request-categories');
     socket.removeAllListeners('request-question-values');
     socket.removeAllListeners('request-turn-name');
@@ -355,6 +363,50 @@ function removeAnswerListeners(user){
     socket.removeAllListeners('final-answer');
 }
 
+// Set the listeners for the final round
+function setFinalAnswerListeners(user, room){
+    var socket = user.socket;
+
+    socket.on('final-wager', (wager) => {
+        let score = room.game.scores[user.id];
+        if(wager < 0 || wager > score){
+            wager = 0;
+        }
+        room.game.finalWagers[user.id] = wager;
+
+        // Check to see if everyone has a wager listed, in which case send the question
+        if(!room.users.some(user => !(user.id in room.game.finalWagers))){
+            transmitFinalQuestion(room);
+        }
+
+        // Remove the listener so the wager cannot be changed
+        socket.removeAllListeners('final-wager');
+    });
+
+    socket.on('final-answer', (answer) => {
+        room.game.finalAnswers[user.id] = answer;
+
+        // Check to see if everyone has submitted an answer, so the answer can be revealed
+        // Clear the timer if this is the case
+        if(!room.users.some(user => !(user.id in room.game.finalAnswers))){
+            clearTimeout(room.game.timeToLiveTimer);
+            scoreFinalAnswers(room);
+        }
+
+        // Remove the listener so the answer cannot be changed
+        socket.removeAllListeners('final-answer');
+    });
+}
+
+// Remove the listeners for the final round
+function removeFinalAnswerListeners(user, room){
+    var socket = user.socket;
+
+    socket.removeAllListeners('final-wager');
+    socket.removeAllListeners('final-answer');
+}
+
+
 /* ***************************************** Constructors *****************************************/
 
 function Question(category, index, wordList, selector, answer, value, room, double){
@@ -382,6 +434,8 @@ function Game(){
     this.match = null;
     this.season = null;
     this.scores = {}; // uid -> score
+    this.finalWagers = {}; // uid -> wager
+    this.finalAnswers = {}; // uid -> answer
     this.frames = {};
     this.frame = [];
     this.part = ''; // single, double, final
@@ -463,7 +517,6 @@ function newHost(){
 // Sets up the game, zeroing out scores, getting the frames, set up single round
 // Set turn to host, remove listeners for lobby actions
 function startGame(room){
-
     room['users'].forEach((user) => room.game.scores[user.id] = 0);
     room.game.frames = getFrames(room.game.season, room.game.match);
     room.game.frame = room.game.frames['single'];
@@ -711,15 +764,17 @@ function sendBackToBoard(room){
         broadcastQuestionValues(user, room);
     });
 
+    // Send the users back to the board
+    io.to(room.name).emit('question-over');
+
     // Check to see if there are no questions left in the round
     if(!room.game.values.some(val => val)){
         if(room.game.part === 'single'){
             startDouble(room);
+        } else{
+            startFinal(room);
         }
     }
-
-    // Send the users back to the board
-    io.to(room.name).emit('question-over');
 }
 
 // Set up double round, grabbing the new questions, and setting turn to player in last
@@ -745,8 +800,68 @@ function startDouble(room){
     console.log("Room %s: Double round started", room.name);
 }
 
+// Sets up for the final round
+function startFinal(room){
+
+    // Get the final round question
+    room.game.frame = room.game.frames.final[0];
+    room.game.part = 'final';
+    
+    // Inform players the final is starting
+    let category = room.game.frame.name;
+    io.to(room.name).emit('start-final', category);
+    console.log("Room %s: Final round started", room.name);
+
+    // Set listeners
+    room.users.forEach((user) => {
+        removeBoardListeners(user);
+        setFinalAnswerListeners(user, room);
+    });
+
+    // After a brief pause, allowing players to view the category,
+    // gather the wagers of the players that have a score > 0
+    setTimeout(() => {
+        room.users.forEach((user) => {
+            let score = room.game.scores[user.id];
+            if(score > 0){
+                user.socket.emit('request-final-wager', score);
+            }else{
+                room.game.finalWagers[user.id] = 0;
+            }
+        });
+
+        // Check to see if everyone has a wager listed (in case all player < 0)
+        if(!room.users.some(user => !(user.id in room.game.finalWagers))){
+            transmitFinalQuestion(room);
+        }
+    }, TIME_BEFORE_REQUEST_FINAL_WAGER_MS);
+}
+
+// Transmits the final question to the room
+function transmitFinalQuestion(room){
+    let card = room.game.frame.cards[0];
+    let question = card.hint;
+    io.to(room.name).emit('question', question);
+    io.to(room.name).emit('request-answer'); // put timer here
+    room.game.timeToLiveTimer = setTimeout(() => {
+        scoreFinalAnswers(room);
+    }, TIME_FINAL_ROUND_MS);
+}
+
+// Scores the final answers for the room, then reveals the correct answer
+function scoreFinalAnswers(room){
+
+    // Remove the listeners so users can no longer answer
+    room.users.forEach((user) => {
+        removeFinalAnswerListeners(user);
+        console.log(room.game.finalAnswers[user.id]);
+    });
+}
+
 // Ends the game
 function endGame(room) {
+    // TODO: Create new game obj, to clear out out old stuff!!!!
+
     room.users.forEach((user) => {
         removeGameListeners(user);
     });

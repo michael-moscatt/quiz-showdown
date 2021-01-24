@@ -14,19 +14,19 @@ const useStyles = makeStyles((theme) => ({
     height: '100%'
   },
   title: {
-    height: '15%',
+    height: '20%',
     textAlign: 'center',
     padding: theme.spacing(3),
   },
   question: {
-    height: '70%',
+    height: '55%',
     paddingLeft: theme.spacing(15),
     paddingRight: theme.spacing(15),
     paddingTop: theme.spacing(10),
     paddingTBottom: theme.spacing(10),
   },
   answer: {
-    height: '15%'
+    height: '25%'
   }
 }));
 

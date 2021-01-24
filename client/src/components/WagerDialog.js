@@ -15,7 +15,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-function DDWagerDialog(props){
+function WagerDialog(props){
   const classes = useStyles();
 
   const [wager, setWager] = useState(0);
@@ -82,4 +82,4 @@ function DDWagerDialog(props){
     </Dialog>
   );
 }
-export default DDWagerDialog;
+export default WagerDialog;
