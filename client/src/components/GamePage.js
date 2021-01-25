@@ -115,7 +115,8 @@ function GamePage() {
                 <Box display="flex" justifyContent="center" m={1}>
                     <Scoreboard turn={turnName} isHost={isHost}/>
                     <WagerDialog open={wagerDialogOpen} handleClose={handleWagerDialogClose}
-                        max={wagerMax} handlePlaceWager={handlePlaceWager} />
+                        max={wagerMax} handlePlaceWager={handlePlaceWager}
+                        title={"Daily Double"}/>
                 </Box>
             </Grid>
         </Grid>

@@ -42,7 +42,7 @@ function WagerDialog(props){
 
   return (
     <Dialog open={props.open} onClose={props.handleClose}>
-      <DialogTitle id="wager-dailog-title">{"Daily Double"}</DialogTitle>
+      <DialogTitle id="wager-dailog-title">{props.title}</DialogTitle>
       <DialogContent>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs>

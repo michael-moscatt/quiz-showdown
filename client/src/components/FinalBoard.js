@@ -157,7 +157,7 @@ function FinalBoard(props) {
               {mode !== 'reveal' && <Typography variant="h6">
                 {parse(props.question)}
                 <WagerDialog open={wagerOpen} handleClose={handleWagerClose}
-                  max={wagerMax} handlePlaceWager={handlePlaceWager} />
+                  max={wagerMax} handlePlaceWager={handlePlaceWager} title={"Final Round"}/>
               </Typography>}
               {mode === 'reveal' && revealAnswerBox}
             </Grid>
