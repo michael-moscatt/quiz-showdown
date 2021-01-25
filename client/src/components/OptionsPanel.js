@@ -45,7 +45,7 @@ function OptionsPanel(){
   const errorRef = useRef(null);
 
   const setEventListeners = function () {
-    socket.on('is-host-response', response => setOptionsEnabled(response));
+    socket.on('is-host', response => setOptionsEnabled(response));
     socket.on('matches-list-response', (response) => {
       setSeasons(response);
     });
@@ -63,7 +63,7 @@ function OptionsPanel(){
     });
     
     return function removeEventListeners(){
-      socket.off('is-host-response');
+      socket.off('is-host');
       socket.off('matches-list-response');
       socket.off('setting-override-change');
       socket.off('setting-interrupt-change');

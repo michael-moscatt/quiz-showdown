@@ -16,18 +16,18 @@ const verifyAnswer = require('./functions/verifyAnswer');
 var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
-const { clear } = require('console');
 
 /* ********************************************* Globals ******************************************/
 
 const DATA_FILE_NAME = "result.json";
 const DATA_FILE_PATH = "data";
 const ROOM_LIMIT = 4;
+const ROOM_NAME_LENGTH = 1; // TODO: change to 5
 const POINT_VALUES = [200,400,600,800,1000];
 const TIME_AFTER_Q_ENDS = 7000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT = 250; // Lockout period for an illegal buzz
-const TIME_TO_ANSWER = 70000; // Time player has to answer after buzzing
+const TIME_TO_ANSWER = 7000; // Time player has to answer after buzzing
 const TIME_AFTER_SELECTION = 1500; // Time after player selects question before it's read
 const TIME_DISPLAY_ANSWER = 3000; // How long to reveal the answer for
 const TIME_BEFORE_REQUEST_FINAL_WAGER = 2000; // Time before requesting final wagers
@@ -85,16 +85,8 @@ http.listen(port, function() {
 // Create user on connection, set listeners for the menu
 io.on('connection', function (socket) {
     var user = new User(socket);
-    var room = {};
-    setMenuListeners(user, room);
 
-    socket.on('disconnect', function() {
-        console.log(user.name ? user.name + " has disconnected." : 
-            "Anonymous" + " has disconnected.");
-        if('users' in room){
-            leaveRoom(user, room);
-        }
-    });    
+    setMenuListeners(user);  
 });
 
 // Set the listeners for a user that is on the menu
@@ -103,7 +95,7 @@ function setMenuListeners(user, room){
 
     socket.on('host', function(username) {
         username = username.substring(0, 16);
-        var roomName = randomLetters(1); // CHANGE TO 6
+        var roomName = createRoomName(ROOM_NAME_LENGTH);
         rooms[roomName] = new Room(user, roomName);
         room = rooms[roomName];
         user.name = username;
@@ -202,8 +194,8 @@ function setLobbyListeners(user, room){
     socket.on('request-lobby-settings', () => {
         socket.emit('matches-list-response', matchInfo);
         if('host' in room){
-            var isHost = room.host === user;
-            socket.emit('is-host-response', isHost);
+            let isHost = room.host === user;
+            socket.emit('is-host', isHost);
         }
         socket.emit('setting-interrupt-change', room.settings['interrupt']);
         socket.emit('setting-override-change', room.settings.override);
@@ -221,6 +213,8 @@ function setLobbyListeners(user, room){
             startGame(room);     
         }
     });
+
+    socket.on('disconnect', () => leaveRoom(user, room));
 }
 
 // Remove the listeners for a user in the lobby
@@ -235,6 +229,7 @@ function removeLobbyListeners(user){
     socket.removeAllListeners('setting-match-change');
     socket.removeAllListeners('request-lobby-settings');
     socket.removeAllListeners('start-game-request');
+    socket.removeAllListeners('disconnect');
 }
 
 
@@ -261,6 +256,7 @@ function setGameListeners(user, room){
         socket.emit('name', user.name);
     });
 
+    socket.on('disconnect', () => leaveRoom(user, room));
 }
 
 // Removes the listeners that exist for the whole game
@@ -270,6 +266,7 @@ function removeGameListeners(user){
     socket.removeAllListeners('host-override');
     socket.removeAllListeners('request-scores');
     socket.removeAllListeners('request-name');
+    socket.removeAllListeners('disconnect');
 }
 
 // Set the listeners for a user on the board
@@ -293,9 +290,7 @@ function setBoardListeners(user, room){
     });
 
     socket.on('request-take-turn', (index) => {
-        console.log("Someone requested take turn");
         if(room.game.turn == user && room.game.values[index] && room.state==='board'){
-            console.log("Allowing them to take turn");
             room.state = 'question';
             setUpQuestion(user, room, index);
         }
@@ -484,8 +479,8 @@ function joinRoom(user, roomName, room){
     setLobbyListeners(user, room);
 }
 
-// Returns n random, capital letters as a string
-function randomLetters(n){
+// Returns a room name with a length of n
+function createRoomName(n){
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     var letters = [];
     
@@ -499,27 +494,58 @@ function randomLetters(n){
 
 // Removes user from room, inform other players if there are any, closes room if not
 function leaveRoom(user, room){
-    var userWasHost = false;
-    if(user.name == room.host.name){ // TODO: handle host leaving room
-        room.host == {name: "left"};
-        userWasHost = true;
-    } else {
-        room['users'] = room['users'].filter(function (oneUser) {
-            return oneUser !== user;
-        });
-    }
+
+    // Remove the user from the user list
+    room['users'] = room['users'].filter(function (oneUser) {
+        return oneUser !== user;
+    });
+
+    // Remove the socket from the room
     user['socket'].leave(room.name);
-    if(room['users'].length < 1 && userWasHost){
+
+    console.log("Room %s: '%s' left", room.name, user.name);
+
+    if(room['users'].length < 1){
+        // Remove the room when the last player has left
         delete rooms[room.name];
+        console.log("Room %s: Deleted", room.name);
     } else {
-        broadcastUsernames(room);
+        
+        // If they were host, assign host to a different player
+        if (user.id == room.host.id) {
+            makeHost(room.users[0], room);
+        } else {
+            // Inform the players the player has left
+            broadcastUsernames(room);
+        }
+
+        if (room.state !== 'lobby'){
+            // Clear the player out of the game
+            if(room.game.turn === user){
+                changeTurn(room.host, room);
+            }
+        }
     }
 }
 
-// Makes a new player the host
-function newHost(){
-    // broadcast usernames
-    // broadcast is-Host-Response
+// Make the given player host of the room
+function makeHost(user, room){
+    room.host = user;
+    console.log("Room %s: '%s' is now host", room.name, user.name);
+    informRoom(room);
+}
+
+// Informs the room of someone leaving / someone becoming host
+function informRoom(room){
+    if(room.state === 'lobby'){
+        broadcastUsernames(room);
+    } else{
+        broadcastScore(room, true);
+    }
+    room.users.forEach((user) => {
+        let isHost = room.host === user;
+        user.socket.emit('is-host', isHost);
+    });
 }
 
 // Sets up the game, zeroing out scores, getting the frames, set up single round
@@ -885,7 +911,6 @@ function scoreFinalAnswers(room){
 
         // Save it
         finalInfo.push(finalInfoObj);
-        console.log(user.name + ': ' + JSON.stringify(finalInfoObj));
     });
 
     // Inform the users that the time is up, and we will now see what every wrote
