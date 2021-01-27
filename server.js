@@ -350,7 +350,10 @@ function setAnswerListeners(user, room){
     socket.on('final-answer', (answer) => {
         let question = room.game.question;
         question.playerAnswer = answer;
+
+        // Clear timers
         clearTimeout(room.game.question.playerAnswerTimer);
+
         playerAnswer(user, room);
     }); 
 }
@@ -685,16 +688,19 @@ function transmitQuestion(room){
         room.game.questionActive = true;
 
         // Set timers until the question ends, subtracting points if the DD isn't answered
+        let timeAmount;
         if (question.double) {
+            timeAmount = TIME_AFTER_Q_ENDS_DD;
             question.timeToLiveTimer = setTimeout(() => {
                 let user = question.selector;
                 modifyScore(room, user.id, question.value*-1);
                 endQuestion(room);
-            }, TIME_AFTER_Q_ENDS_DD);
+            }, timeAmount);
         } else {
-            question.timeToLiveTimer =
-                setTimeout(endQuestion, TIME_AFTER_Q_ENDS, room);
+            timeAmount = TIME_AFTER_Q_ENDS;
+            question.timeToLiveTimer = setTimeout(endQuestion, timeAmount, room);     
         }
+        io.to(room.name).emit('time-initial', timeAmount);
     }
 }
 
@@ -724,10 +730,12 @@ function playerBuzz(user, room){
     lockout(user, room, true);
 
     // Start the timer for the player to answer
+    let timeRemaining = TIME_TO_ANSWER;
     question.playerAnswerTimer =
         setTimeout(() => {
             playerAnswer(user, room);
-        }, TIME_TO_ANSWER);
+        }, timeRemaining);
+    io.to(room.name).emit('time-initial', timeRemaining);
 }
 
 // Score the player's answer
@@ -763,11 +771,12 @@ function cleanupIncorrectPlayerBuzz(room, socket){
         room.game.questionActive = true;
         // Finish the question if the buzz was an interrupt
         if(question.completedTransmission){
-            question.timeToLiveTimer = setTimeout(endQuestion, TIME_AFTER_Q_ENDS, room);
+            let timeRemaining = TIME_AFTER_Q_ENDS;
+            question.timeToLiveTimer = setTimeout(endQuestion, timeRemaining, room);
+            io.to(room.name).emit('time-start', timeRemaining);
         } else{
             question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
         }
-
     } else{
         endQuestion(room);
     }
@@ -781,8 +790,11 @@ function endQuestion(room){
     });
     room.game.questionActive = false;
     
-    // Reveal the answer, set timer for how long it displays for
+    // Reveal the answer, clear client timer
     io.to(room.name).emit('question-answer', room.game.question.answer);
+    io.to(room.name).emit('time-clear');
+
+    // Clear timer, set timeout
     setTimeout(sendBackToBoard, TIME_DISPLAY_ANSWER, room);
 }
 

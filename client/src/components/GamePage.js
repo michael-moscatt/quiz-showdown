@@ -85,7 +85,6 @@ function GamePage() {
     useEffect(()=>setMyTurn(turnName === name), [turnName, name]);
 
     function handleValueCard(index){
-        console.log("Request take turn");
         socket.emit('request-take-turn', index);
     }
 
