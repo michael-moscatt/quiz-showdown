@@ -185,7 +185,8 @@ def get_category(table, is_final):
             if answer_text_soup:
                 answer_text = re.search(answer_regex, answer_text_soup["onmouseover"])
                 if answer_text:
-                    card["answer"] = answer_text.group(1).replace("<i>", "").replace("<I>", "").replace("</I>", "")
+                    card["answer"] = answer_text.group(1).replace("<i>", "").replace("<I>", "").replace("</I>", "").replace("\\'", "'")
+                    print(card["answer"])
                 else:
                     card["answer"] = "!Error!: Unable to parse answer" # Represents inability to pull out answer
             else:
