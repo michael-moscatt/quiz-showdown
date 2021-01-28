@@ -19,7 +19,7 @@ const crypto = require("crypto");
 
 /* ********************************************* Globals ******************************************/
 
-const DATA_FILE_NAME = "result.json";
+const DATA_FILE_NAME = "data.json";
 const DATA_FILE_PATH = "data";
 const ROOM_LIMIT = 4;
 const ROOM_NAME_LENGTH = 1; // TODO: change to 5

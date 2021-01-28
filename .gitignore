@@ -37,3 +37,4 @@ scripts/scraper2.py
 scripts/result.json
 data/result.json
 client/src/hooks/useInterval.js
+data/data.json
