@@ -41,13 +41,11 @@ var rooms = {}; // roomName -> room
 
 /* ******************************************* Routing ********************************************/
 
-app.use(express.static(path.join(__dirname, 'build')));
+app.use(express.static(path.join(__dirname, '/client/build')));
 
 app.get('/', function (req, res) {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+    res.sendFile(path.join(__dirname, '/client/build', 'index.html'));
 });
-
-app.listen(port);
 
 /* ******************************************* Load in data ***************************************/
 
@@ -59,15 +57,6 @@ fs.readFile(DATA_FILE_PATH + '/' + DATA_FILE_NAME, 'utf8', function (err, data) 
     dataObj = JSON.parse(data);
     pullMatchInfo();
 });
-
-// Attempt to pull out season, id, and date from all matches
-// var readInterval = setInterval(tryToRead, 100);
-// function tryToRead() {
-//     if ('35' in dataObj) {
-//         clearInterval(readInterval);
-//         pullMatchInfo();
-//     }
-// }
 
 // Create the matchInfo object that holds all questions
 function pullMatchInfo(){
