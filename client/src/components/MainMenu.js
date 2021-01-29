@@ -1,7 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { SocketContext } from '../context/socket-context';
 import Button from '@material-ui/core/Button';
-import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
 import Paper from '@material-ui/core/Paper';
 import { makeStyles } from "@material-ui/core/styles";
@@ -9,14 +8,12 @@ import TextField from '@material-ui/core/TextField';
 import JoinDialog from './JoinDialog.js';
 
 const useStyles = makeStyles((theme) => ({
-  button: {
-    width: 200
-  },
   paper: {
-    maxWidth: 300
+    padding: theme.spacing(3)
   },
   menuItem: {
-    margin: theme.spacing(2)
+    minWidth: 200,
+    margin: theme.spacing(.5)
   }
 }));
 
@@ -57,52 +54,22 @@ function MainMenu(){
   return (
     <Box display="flex" justifyContent="center" mt={3}>
       <Paper className={classes.paper} elevation={3}>
-        <Box display="flex" justifyContent="center">
-        <TextField className={classes.button} id="username" label="Name" variant="filled"
-                    margin="dense" autoComplete="off" onChange={handleUsernameChange}
-                    inputProps={{ maxLength: 16 }} />
+        <Box display="flex" justifyContent="center" flexDirection="column">
+          <TextField className={classes.menuItem} id="username" label="Name" variant="filled"
+            margin="dense" autoComplete="off" onChange={handleUsernameChange}
+            inputProps={{ maxLength: 16 }} />
+          <Button className={classes.menuItem} size="large" color="primary" variant="contained"
+            onClick={handleHostClick}>
+            Host
+          </Button>
+          <Button className={classes.menuItem} size="large" color="primary" variant="contained"
+            onClick={handleJoinDialogOpen}>
+            Join
+          </Button>
+          <JoinDialog open={joinDialogOpen} handleClose={handleJoinDialogClose} username={username} />
         </Box>
       </Paper>
     </Box>
-
-
-
-
-    <Grid container justify="center">
-      <Grid item xs={12}>
-        <Box justifyContent="center" display="flex">
-          <Paper className={classes.paper} elevation={3}>
-            <Box p={4}>
-              <Grid container spacing={1}>
-                <Grid item align="center" xs={12}>
-                  <TextField className={classes.button} id="username" label="Name" variant="filled"
-                    margin="dense" autoComplete="off" onChange={handleUsernameChange}
-                    inputProps={{ maxLength: 16 }} />
-                </Grid>
-                <Grid item align="center" xs={12}>
-                  <Button className={classes.button} size="large" color="primary" variant="contained"
-                    onClick={handleHostClick}>
-                    Host
-                </Button>
-                </Grid>
-                <Grid item align="center" xs={12}>
-                  <Button className={classes.button} size="large" color="primary" variant="contained"
-                    onClick={handleJoinDialogOpen}>
-                    Join
-                </Button>
-                  <JoinDialog open={joinDialogOpen} handleClose={handleJoinDialogClose} username={username} />
-                </Grid>
-                <Grid item align="center" xs={12}>
-                  <Button className={classes.button} size="large" color="primary" variant="contained">
-                    About
-                </Button>
-                </Grid>
-              </Grid>
-            </Box>
-          </Paper>
-        </Box>
-      </Grid>
-    </Grid>
   );
 }
 export default MainMenu;
