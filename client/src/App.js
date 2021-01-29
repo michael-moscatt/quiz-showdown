@@ -1,4 +1,4 @@
-import {SocketContext} from './socket-context';
+import {SocketContext} from './context/socket-context';
 import * as io from 'socket.io-client';
 import React, { useState, useEffect } from 'react';
 import MainMenu from './components/MainMenu.js';
@@ -6,10 +6,14 @@ import Lobby from './components/Lobby.js';
 import GamePage from './components/GamePage.js';
 import SiteName from './components/SiteName.js';
 import Grid from '@material-ui/core/Grid';
+import CssBaseline from "@material-ui/core/CssBaseline";
+import { MuiThemeProvider } from "@material-ui/core/styles";
+import myTheme from './context/myTheme-context.js';
 
 const socket = io();
 
 function App(){
+
   const [page, setPage] = useState('menu');
 
   function setEventListeners() {
@@ -55,16 +59,19 @@ function App(){
   }
 
   return (
-    <SocketContext.Provider value={socket}>
-      <Grid container spacing={1}>
-        <Grid item xs={12}>
-          <SiteName />
-        </Grid>
-        <Grid item xs={12}>
-          {getView()}
-        </Grid>
-      </Grid>
-    </SocketContext.Provider>
+    <MuiThemeProvider theme={myTheme}>
+      <CssBaseline />
+      <SocketContext.Provider value={socket}>
+          <Grid container spacing={1}>
+            <Grid item xs={12}>
+              <SiteName />
+            </Grid>
+            <Grid item xs={12}>
+              {getView()}
+            </Grid>
+          </Grid>
+      </SocketContext.Provider>
+    </MuiThemeProvider>
   );
 }
 export default App;

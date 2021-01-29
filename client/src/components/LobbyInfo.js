@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { SocketContext } from '../socket-context';
+import { SocketContext } from '../context/socket-context';
 import Box from '@material-ui/core/Box';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';

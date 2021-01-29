@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import Paper from '@material-ui/core/Paper';
-import { SocketContext } from '../socket-context';
+import { SocketContext } from '../context/socket-context';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Button from '@material-ui/core/Button';
 import InputLabel from '@material-ui/core/InputLabel';

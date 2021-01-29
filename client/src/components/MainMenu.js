@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { SocketContext } from '../socket-context';
+import { SocketContext } from '../context/socket-context';
 import Button from '@material-ui/core/Button';
 import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
@@ -14,6 +14,9 @@ const useStyles = makeStyles((theme) => ({
   },
   paper: {
     maxWidth: 300
+  },
+  menuItem: {
+    margin: theme.spacing(2)
   }
 }));
 
@@ -52,6 +55,19 @@ function MainMenu(){
   useEffect(setEventListeners, [socket]);
 
   return (
+    <Box display="flex" justifyContent="center" mt={3}>
+      <Paper className={classes.paper} elevation={3}>
+        <Box display="flex" justifyContent="center">
+        <TextField className={classes.button} id="username" label="Name" variant="filled"
+                    margin="dense" autoComplete="off" onChange={handleUsernameChange}
+                    inputProps={{ maxLength: 16 }} />
+        </Box>
+      </Paper>
+    </Box>
+
+
+
+
     <Grid container justify="center">
       <Grid item xs={12}>
         <Box justifyContent="center" display="flex">
