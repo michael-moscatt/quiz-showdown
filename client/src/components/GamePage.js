@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { SocketContext } from '../socket-context';
+import { SocketContext } from '../context/socket-context';
 import Scoreboard from './Scoreboard.js';
 import Gameboard from './Gameboard.js';
 import QuestionBoard from './QuestionBoard.js';

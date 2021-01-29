@@ -1,5 +1,5 @@
 import Box from '@material-ui/core/Box';
-import { SocketContext } from '../socket-context';
+import { SocketContext } from '../context/socket-context';
 import React, { useContext, useState, useEffect } from 'react';
 import Button from '@material-ui/core/Button';
 import { makeStyles } from "@material-ui/core/styles";

@@ -31,10 +31,8 @@ yarn-error.log*
 client/.eslintcache
 client/debug.log
 scripts/checker2.coffee
-data/output.json
 scripts/test.py
 scripts/scraper2.py
 scripts/result.json
-data/result.json
 client/src/hooks/useInterval.js
 data/data.json

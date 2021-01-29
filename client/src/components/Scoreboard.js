@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { SocketContext } from '../socket-context';
+import { SocketContext } from '../context/socket-context';
 import ScoreCard from './ScoreCard';
 
 function Scoreboard(props){

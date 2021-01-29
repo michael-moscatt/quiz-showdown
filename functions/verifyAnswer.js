@@ -16,7 +16,6 @@ const verifyAnswer = (answer, given) => {
   variants.push(given.replace(SMALL_WORDS_START_REGEX, ''));
 
   // Find the variant most similar to the real answer, see if it is close enough
-  console.log(JSON.stringify(stringSimilarity.findBestMatch(answer, variants)));
   return stringSimilarity.findBestMatch(answer, variants).bestMatch.rating > 0.70;
 };
 
