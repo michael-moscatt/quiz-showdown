@@ -53,14 +53,9 @@ app.get('/', function (req, res) {
 /* ******************************************* Load in data ***************************************/
 
 // Read from data file
-function getGameData(path, file) {
-    fs.readFile(path + '/' + file, 'utf8', function (err, data) {
-        if (err) {
-            throw Error('Could not load data from file')
-        }
-        dataObj = JSON.parse(data);
-        pullMatchInfo();
-    });
+function getGameData(file) {
+    dataObj = JSON.parse(fs.readFileSync(path.join(__dirname, "/data/", file)));
+    pullMatchInfo();
 }
 
 // Create the matchInfo object that holds all questions
@@ -79,7 +74,7 @@ function pullMatchInfo(){
     });
 }
 
-getGameData('data', configObj.dataFileName);
+getGameData(configObj.dataFileName);
 
 /* *********************************** Start Server ***********************************************/
 
