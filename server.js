@@ -16,6 +16,7 @@ const verifyAnswer = require('./functions/verifyAnswer');
 var fs = require('fs');
 var util = require('util');
 const crypto = require("crypto");
+const path = require('path');
 
 /* ********************************************* Globals ******************************************/
 
@@ -37,6 +38,16 @@ const TIME_BETWEEN_FINAL_REVEALS = 8000; // Time between revealing each players 
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
 var rooms = {}; // roomName -> room
+
+/* ******************************************* Routing ********************************************/
+
+app.use(express.static(path.join(__dirname, 'build')));
+
+app.get('/', function (req, res) {
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
+app.listen(port);
 
 /* ******************************************* Load in data ***************************************/
 
