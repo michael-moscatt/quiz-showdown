@@ -18,12 +18,15 @@ var util = require('util');
 const crypto = require("crypto");
 const path = require('path');
 
+/* ******************************************* Config *********************************************/
+
+var env = process.env.NODE_ENV || 'development';
+var configObj = loadConfigFile('config.json', env);
+
 /* ********************************************* Globals ******************************************/
 
-const DATA_FILE_NAME = "data.json";
-const DATA_FILE_PATH = "data";
+const ROOM_NAME_LENGTH = configObj.roomNameLength;
 const ROOM_LIMIT = 4;
-const ROOM_NAME_LENGTH = 1; // TODO: change to 5
 const POINT_VALUES = [200,400,600,800,1000];
 const TIME_AFTER_Q_ENDS = 7000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD = 10000; // Time after a question ends before buzzing is disallowed DD
@@ -50,13 +53,15 @@ app.get('/', function (req, res) {
 /* ******************************************* Load in data ***************************************/
 
 // Read from data file
-fs.readFile(DATA_FILE_PATH + '/' + DATA_FILE_NAME, 'utf8', function (err, data) {
-    if (err) {
-        throw Error('Could not load data from file')
-    }
-    dataObj = JSON.parse(data);
-    pullMatchInfo();
-});
+function getGameData(path, file) {
+    fs.readFile(path + '/' + file, 'utf8', function (err, data) {
+        if (err) {
+            throw Error('Could not load data from file')
+        }
+        dataObj = JSON.parse(data);
+        pullMatchInfo();
+    });
+}
 
 // Create the matchInfo object that holds all questions
 function pullMatchInfo(){
@@ -73,6 +78,8 @@ function pullMatchInfo(){
         matchInfo[season] = matches;
     });
 }
+
+getGameData('data', configObj.dataFileName);
 
 /* *********************************** Start Server ***********************************************/
 
@@ -1058,4 +1065,9 @@ function broadcastQuestionValues(user, room){
 function changeTurn(user, room){
     room.game.turn = user;
     io.to(room.name).emit('turn-name', user.name);
+}
+
+// Load configuration file based on current mode
+function loadConfigFile(fileName, env){
+    return JSON.parse(fs.readFileSync(path.join(__dirname, fileName)))[env];
 }

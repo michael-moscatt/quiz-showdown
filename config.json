@@ -1,0 +1,10 @@
+{
+  "development": {
+    "roomNameLength": 1,
+    "dataFileName": "testData.json"
+  },
+  "production": {
+    "roomNameLength": 5,
+    "dataFileName": "data.json"
+  }
+}
