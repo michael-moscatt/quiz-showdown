@@ -99,7 +99,7 @@ function GamePage() {
 
     return (
         <Grid container justify="center">
-            <Grid item xs={12} lg={10}>
+            <Grid item xs={12} lg={10} xl={8}>
                 <Box className={classes.box} display="flex" justifyContent="center" m={1}>
                     {mode === 'board' &&
                     <Gameboard categories={categories} values={values} handleClick={handleValueCard}

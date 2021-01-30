@@ -13,13 +13,14 @@ const useStyles = makeStyles((theme) => ({
   },
   timer: {
     height: 7,
-    width: props => `${props.fraction}%`,
+    width: fraction => `${fraction}%`,
     backgroundColor: theme.palette.primary.main
   }
 }));
 
 function VisualTimer(props){
-  const classes = useStyles(props);
+  const fraction = props.fraction < 1 ? 0 : props.fraction
+  const classes = useStyles(fraction);
 
   const timer = 
     <Paper className={classes.timer}>

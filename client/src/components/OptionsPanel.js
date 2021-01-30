@@ -164,7 +164,7 @@ function OptionsPanel(){
                         onChange={handleSeasonChange}
                         disabled={!optionsEnabled}
                       >
-                        {Object.keys(seasons).map((season) =>
+                        {Object.keys(seasons).reverse().map((season) =>
                           <MenuItem key={season} value={season}>{season}</MenuItem>)}
                       </Select>
                   </FormControl>

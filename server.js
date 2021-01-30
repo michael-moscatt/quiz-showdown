@@ -54,7 +54,7 @@ app.get('/', function (req, res) {
 
 // Read from data file
 function getGameData(file) {
-    dataObj = JSON.parse(fs.readFileSync(path.join(__dirname, "/data/", file)));
+    dataObj = JSON.parse(fs.readFileSync(path.join(__dirname, "data", file)));
     pullMatchInfo();
 }
 
