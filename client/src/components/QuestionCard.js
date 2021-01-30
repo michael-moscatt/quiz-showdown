@@ -93,7 +93,7 @@ function QuestionCard(props){
             {<VisualTimer fraction={timeFraction} />}
         </Grid>
         <Grid item className={classes.question} xs={12}>
-          <Typography variant="h6">
+          <Typography variant="h5">
             {parse(props.question)}
           </Typography>
         </Grid>

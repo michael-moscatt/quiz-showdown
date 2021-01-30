@@ -775,9 +775,10 @@ function cleanupIncorrectPlayerBuzz(room, socket){
         if(question.completedTransmission){
             let timeRemaining = TIME_AFTER_Q_ENDS;
             question.timeToLiveTimer = setTimeout(endQuestion, timeRemaining, room);
-            io.to(room.name).emit('time-start', timeRemaining);
+            io.to(room.name).emit('time-initial', timeRemaining);
         } else{
             question.transmissionTimer = setInterval(transmitQuestion, room.settings.delay, room);
+            io.to(room.name).emit('time-clear');
         }
     } else{
         endQuestion(room);
@@ -892,11 +893,18 @@ function transmitFinalQuestion(room){
     let card = room.game.frame.cards[0];
     let question = card.hint;
     room.game.question.answer = card.answer;
+
+    // Send question
     io.to(room.name).emit('question', question);
-    io.to(room.name).emit('request-answer'); // put timer here
+    io.to(room.name).emit('request-answer');
+
+    // Set timers
+    let timeRemaining = TIME_FINAL_ROUND;
     room.game.timeToLiveTimer = setTimeout(() => {
         scoreFinalAnswers(room);
-    }, TIME_FINAL_ROUND);
+    }, timeRemaining);
+    io.to(room.name).emit('time-initial', timeRemaining);
+
 }
 
 // Scores the final answers for the room, then reveals the correct answer
@@ -928,6 +936,7 @@ function scoreFinalAnswers(room){
     });
 
     // Inform the users that the time is up, and we will now see what every wrote
+    io.to(room.name).emit('time-clear');
     io.to(room.name).emit('final-time-up', 'The Answers are in...');
     setTimeout(() => {
         sendFinalAnswers(room, finalInfo);
