@@ -39,14 +39,13 @@ function MainMenu(){
   }
 
   function setEventListeners() {
-    socket.on('join-response',
-      (response) => {
-        if(response === "invalid"){
-          // TODO
-        }
+    socket.on('join-error',
+      (error) => {
+        // todo: Inform user error has occured
+        console.log(error);
     });
     return function removeEventListeners() {
-      socket.off('join-response');
+      socket.off('join-error');
     }
   }
   useEffect(setEventListeners, [socket]);

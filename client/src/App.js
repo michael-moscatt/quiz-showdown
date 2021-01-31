@@ -17,6 +17,7 @@ function App(){
   const [page, setPage] = useState('menu');
 
   function setEventListeners() {
+
     socket.on('host-response',
       (response) => {
         if (response === "ok") {
@@ -25,14 +26,9 @@ function App(){
       }
     );
 
-    socket.on('join-response',
-      (response) => {
-        if (response === "ok") {
-          setPage('lobby');
-        } else {
-          console.log(response); // TODO: POST ERRORS
-        }
-      });
+    socket.on('join-lobby', () => {
+      setPage('lobby');
+    });
 
     socket.on('start-game', () => {
       setPage('game');
@@ -40,7 +36,7 @@ function App(){
 
     return function removeEventListeners(){
       socket.off('host-response');
-      socket.off('join-response');
+      socket.off('join-accepted');
       socket.off('start-game');
     }
   }

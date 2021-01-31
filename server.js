@@ -28,6 +28,8 @@ var configObj = loadConfigFile('config.json', env);
 const ROOM_NAME_LENGTH = configObj.roomNameLength;
 const ROOM_LIMIT = 4;
 const POINT_VALUES = [200,400,600,800,1000];
+const TIME_SMALL_WAIT = 2000;
+const TIME_MEDIUM_WAIT = 4000;
 const TIME_AFTER_Q_ENDS = 7000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT = 250; // Lockout period for an illegal buzz
@@ -35,7 +37,7 @@ const TIME_TO_ANSWER = 7000; // Time player has to answer after buzzing
 const TIME_AFTER_SELECTION = 1500; // Time after player selects question before it's read
 const TIME_DISPLAY_ANSWER = 3000; // How long to reveal the answer for
 const TIME_BEFORE_REQUEST_FINAL_WAGER = 2000; // Time before requesting final wagers
-const TIME_FINAL_ROUND = 15000; // Time for final round answers
+const TIME_FINAL_ROUND = 30000; // Time for final round answers
 const TIME_AFTER_FINAL_ROUND_BEFORE_REVEALS = 2000; // Time after final round before showing answers
 const TIME_BETWEEN_FINAL_REVEALS = 8000; // Time between revealing each players final answer / score
 var dataObj;
@@ -123,10 +125,14 @@ function setMenuListeners(user, room){
         } else {
             user.name = username.substring(0, 16);
             response = "ok";
-            joinRoom(user, roomName, room);
-            console.log("Room %s: '%s' joined", roomName, username);
         }
-        socket.emit('join-response', response);
+        if(response === "ok"){
+            socket.emit('join-lobby');
+            console.log("Room %s: '%s' joined", roomName, user.name);
+            joinRoom(user, roomName, room);   
+        } else{
+            socket.emit('join-error', response);
+        }
     });
 }
 
@@ -904,7 +910,6 @@ function transmitFinalQuestion(room){
         scoreFinalAnswers(room);
     }, timeRemaining);
     io.to(room.name).emit('time-initial', timeRemaining);
-
 }
 
 // Scores the final answers for the room, then reveals the correct answer
@@ -917,7 +922,8 @@ function scoreFinalAnswers(room){
 
         // Gather information about their answer
         let wager = room.game.finalWagers[user.id];
-        let givenAnswer = room.game.finalAnswers[user.id];
+        let listedAnswer = room.game.finalAnswers[user.id];
+        let givenAnswer = listedAnswer ? listedAnswer : '';
         let correct = verifyAnswer(room.game.question.answer, givenAnswer);
         let curScore = room.game.scores[user.id];
         let finalScore = correct ? curScore + wager : curScore - wager;
@@ -959,16 +965,36 @@ function sendFinalAnswers(room, finalInfo){
             }, TIME_BETWEEN_FINAL_REVEALS - 1500);
 
             setTimeout(sendFinalInfo, TIME_BETWEEN_FINAL_REVEALS);
+        } else{
+            endGame(room, finalInfo);
         }
     })();
 }
 
-// Ends the game
-function endGame(room) {
-    // TODO: Create new game obj, to clear out out old stuff!!!!
-
+// Announce the winner(s) of the match and their scores
+function endGame(room, finalInfo) {
     room.users.forEach((user) => {
         removeGameListeners(user);
+    });
+
+    let highestScore = Math.max(...finalInfo.map(obj => obj.finalScore));
+    let winners = finalInfo.filter(obj => obj.finalScore == highestScore).map(obj => obj.name);
+    let auxVerb = winners.length > 1 ? " have " : " has ";
+    let names = winners.join(" & ");
+    let winString = names + auxVerb + "won the match with $" + highestScore + "!";
+    io.to(room.name).emit("winners", winString);
+
+    setTimeout(returnToLobby, TIME_MEDIUM_WAIT, room);
+}
+
+// Send the players back to the lobby
+function returnToLobby(room){
+    room.game = new Game();
+    room.state = 'lobby';
+    room.users.forEach(user => {
+        console.log("Telling: " + user.name);
+        setLobbyListeners(user, room);
+        user.socket.emit('join-lobby');
     });
 }
 
