@@ -8,7 +8,7 @@ import Box from '@material-ui/core/Box';
 import { makeStyles } from "@material-ui/core/styles";
 import WagerDialog from './WagerDialog';
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles(() => ({
   box: {
     height: 550
   }
@@ -26,7 +26,6 @@ function GamePage() {
   const [myTurn, setMyTurn] = useState(false);
   const [category, setCategory] = useState('');
   const [value, setValue] = useState('');
-  const [question, setQuestion] = useState('');
   const [wagerDialogOpen, setWagerDialogOpen] = useState(false);
   const [wagerMax, setWagerMax] = useState(0);
   const [isHost, setIsHost] = useState(false);
@@ -40,25 +39,21 @@ function GamePage() {
       setWagerMax(max);
       setWagerDialogOpen(true);
     });
+
     socket.on('question-info', (category, value) => {
-      setQuestion('');
       setCategory(category);
       setValue(value);
       setMode('question');
     });
-    socket.on('question', question => setQuestion(question));
+    
     socket.on('question-over', () => {
       setMode('board');
     });
     socket.on('is-host', (isHost) => setIsHost(isHost));
     socket.on('start-final', (category) => {
-      setQuestion('');
       setCategory(category);
-      setMode('final');
-    });
-    socket.on('final-time-up', (msg) => {
-      setCategory(msg);
-      setQuestion('');
+      setValue(null);
+      setMode('question');
     });
     return function removeEventListeners() {
       socket.off('categories');
@@ -66,8 +61,7 @@ function GamePage() {
       socket.off('turn-name');
       socket.off('name');
       socket.off('daily-double');
-      socket.off('question-info');
-      socket.off('question');
+      socket.off('question-info')
       socket.off('question-over');
       socket.off('is-host');
       socket.off('start-final');
@@ -103,10 +97,7 @@ function GamePage() {
           {mode === 'board' &&
             <Gameboard categories={categories} values={values} handleClick={handleValueCard}
               active={myTurn} />}
-          {mode === 'question' &&
-            <QuestionCard category={category} value={value} question={question} final={false}/>}
-          {mode === 'final' &&
-            <QuestionCard category={category} question={question} final={true}/>}
+          {mode === 'question' && <QuestionCard category={category} value={value} />}
         </Box>
       </Grid>
       <Grid item xs={12} lg={10}>

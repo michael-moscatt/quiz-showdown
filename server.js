@@ -398,7 +398,7 @@ function setFinalAnswerListeners(user, room){
         room.game.finalAnswers[user.id] = answer;
 
         // Inform the user that their answer has been accepted
-        socket.emit('final-answer-accepted');
+        socket.emit('clear-answer-input');
 
         // Remove the listener so the answer cannot be changed
         socket.removeAllListeners('final-answer');
@@ -663,8 +663,13 @@ function startQuestion(room){
     let category = question.category;
     let value = question.value;
 
-    // Inform players about the question info
+    // Inform players of the category and value
     io.to(room.name).emit('question-info', category, value);
+
+    // Check if each player should have the ability to buzz in, inform them
+    room.users.forEach((user) => {
+        !room.game.question.lockOuts[user.id] ? user.socket.emit('buzz-enable') : false
+    });
 
     // Allow for interrupts if it's in the settings
     if (room.settings.interrupt) {
@@ -732,7 +737,7 @@ function playerBuzz(user, room){
     // Inform the players, set listeners for player who buzzed
     socket.to(room.name).emit('opponent-buzz', user.name);
     setAnswerListeners(user, room);
-    socket.emit('buzz-accepted');
+    socket.emit('request-answer');
 
     // Ensure player who buzzed will only answer once
     lockout(user, room, true);
@@ -944,6 +949,7 @@ function scoreFinalAnswers(room){
     // Inform the users that the time is up, and we will now see what every wrote
     io.to(room.name).emit('time-clear');
     io.to(room.name).emit('final-time-up', 'The Answers are in...');
+    io.to(room.name).emit('remove-answer-input');
     setTimeout(() => {
         sendFinalAnswers(room, finalInfo);
     }, TIME_AFTER_FINAL_ROUND_BEFORE_REVEALS)

@@ -43,7 +43,7 @@ function AnswerModule() {
   const socket = useContext(SocketContext);
   const classes = useStyles();
 
-  const [mode, setMode] = useState('default');
+  const [mode, setMode] = useState('none');
   const [someoneBuzzed, setsomeoneBuzzed] = useState(true);
   const [lockedOut, setlockedOut] = useState(false);
   const [opponentAnswer, setOpponentAnswer] = useState('');
@@ -52,15 +52,17 @@ function AnswerModule() {
   const [answer, setAnswer] = useState('');
 
 
-  useEffect(() => mode === 'default' ? setsomeoneBuzzed(false) : setsomeoneBuzzed(true), [mode]);
+  useEffect(() => {
+    setsomeoneBuzzed(mode === 'self' || mode === 'opponent');
+  }, [mode]);
 
   function setEventListeners() {
+    socket.on('buzz-enable', () => setMode('default'));
     socket.on('opponent-buzz', (name) => {
       setMode('opponent');
       setopponentName(name);
       setOpponentAnswer('');
     });
-    socket.on('buzz-accepted', () => setMode('self'));
     socket.on('answer-stream', (text) => setOpponentAnswer(text));
     socket.on('lockout-start', () => setlockedOut(true));
     socket.on('lockout-end', () => setlockedOut(false));
@@ -73,15 +75,23 @@ function AnswerModule() {
       setAnswer(answer);
       setMode('answer');
     });
+    socket.on('request-answer', () => {
+      setMode('self');
+    });
+    socket.on('clear-answer-input', () => {
+      setMode('none');
+    });
     return function removeEventListeners() {
+      socket.off('buzz-enable');
       socket.off('opponent-buzz');
-      socket.off('buzz-accepted');
       socket.off('answer-stream');
       socket.off('lockout-start');
       socket.off('lockout-end');
       socket.off('wrong-answer');
       socket.off('opponent-wrong-answer');
       socket.off('question-answer');
+      socket.off('request-answer');
+      socket.off('clear-answer-input');
     }
   }
   useEffect(setEventListeners, [socket]);
