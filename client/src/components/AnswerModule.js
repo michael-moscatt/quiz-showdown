@@ -14,21 +14,19 @@ const useStyles = makeStyles((theme) => ({
     alignItems: "flex-end"
   },
   button: {
-    margin: theme.spacing(2),
     width: 100,
     height: 55
   },
   input: {
-    margin: theme.spacing(2),
-    width: 350,
+    width: '80%',
     height: 55
   },
-  textBox: {
-    boxSizing: 'border-box',
-    display: 'flex', 
-    alignItems: 'flex-end'
+  opponentBox: {
+    height: 55,
+    padding: theme.spacing(2)
   },
   answerBox: {
+    height: 55,
     width: '100%',
     display: 'flex', 
     justifyContent: 'center'
@@ -36,6 +34,12 @@ const useStyles = makeStyles((theme) => ({
   typography: {
     flexGrow: 1,
     textAlign: "center"
+  },
+  selfBuzz: {
+    width: '100%',
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "space-between"
   }
 }));
 
@@ -129,7 +133,7 @@ function AnswerModule() {
     </Button>
 
   const selfBuzz = 
-    <Box className={classes.root}>
+    <Box className={classes.selfBuzz}>
       <TextField className={classes.input} id="answer" label="Answer" inputProps={{ maxLength: 60 }}
         variant="outlined" autoComplete="off" onChange={handleChange} autoFocus />
       <Button className={classes.button} color="primary" variant="contained"
@@ -139,12 +143,12 @@ function AnswerModule() {
     </Box>
 
   const opponentBuzz = 
-    <Box className={classes.textBox} p={3}>
+    <Box className={classes.opponentBox}>
       <Typography><strong>{opponentName}</strong>:&nbsp;{opponentAnswer}</Typography>
     </Box>
 
   const revealAnswer = 
-    <Box className={classes.answerBox} justifyContent="center" p={3} >
+    <Box className={classes.answerBox} justifyContent="center" >
       <Typography className={classes.typography} variant="h6" >
         <strong>{answer}</strong>
       </Typography>

@@ -5,18 +5,10 @@ import Gameboard from './Gameboard.js';
 import QuestionCard from './QuestionCard.js';
 import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
-import { makeStyles } from "@material-ui/core/styles";
 import WagerDialog from './WagerDialog';
-
-const useStyles = makeStyles(() => ({
-  box: {
-    height: 550
-  }
-}));
 
 function GamePage() {
   const socket = useContext(SocketContext);
-  const classes = useStyles();
 
   const [mode, setMode] = useState('board');
   const [categories, setCategories] = useState([]);
@@ -90,24 +82,36 @@ function GamePage() {
     handleWagerDialogClose();
   }
 
+  const question =
+    <Grid item sm={12} md={10} lg={7} xl={5}>
+      <Box display="flex" justifyContent="center">
+        <QuestionCard category={category} value={value} />
+      </Box>
+    </Grid>
+
+  const board =
+    <Grid item sm={12} md={11} lg={9} xl={7}>
+      <Box display="flex" justifyContent="center">
+        <Gameboard categories={categories} values={values} handleClick={handleValueCard}
+          active={myTurn} />
+      </Box>
+    </Grid>
+
+  const score =
+    <Grid sm={12}>
+      <Box display="flex" justifyContent="center">
+        <Scoreboard turn={turnName} isHost={isHost} />
+      </Box>
+    </Grid>
+
   return (
     <Grid container justify="center">
-      <Grid item xs={12} lg={10} xl={8}>
-        <Box className={classes.box} display="flex" justifyContent="center" m={1}>
-          {mode === 'board' &&
-            <Gameboard categories={categories} values={values} handleClick={handleValueCard}
-              active={myTurn} />}
-          {mode === 'question' && <QuestionCard category={category} value={value} />}
-        </Box>
-      </Grid>
-      <Grid item xs={12} lg={10}>
-        <Box display="flex" justifyContent="center" m={1}>
-          <Scoreboard turn={turnName} isHost={isHost} />
-          <WagerDialog open={wagerDialogOpen} handleClose={handleWagerDialogClose}
-            max={wagerMax} handlePlaceWager={handlePlaceWager}
-            title={"Daily Double"} />
-        </Box>
-      </Grid>
+      {mode === 'board' && board}
+      {mode === 'question' && question}
+      {score}
+      <WagerDialog open={wagerDialogOpen} handleClose={handleWagerDialogClose}
+          max={wagerMax} handlePlaceWager={handlePlaceWager}
+          title={"Daily Double"} />
     </Grid>
   );
 }

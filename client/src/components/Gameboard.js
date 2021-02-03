@@ -1,61 +1,42 @@
 import CategoryCard from './CategoryCard.js';
-import ValueCard from './ValueCard.js';
 import Grid from '@material-ui/core/Grid';
-import Box from '@material-ui/core/Box';
 import { makeStyles } from "@material-ui/core/styles";
+import Divider from '@material-ui/core/Divider';
+import Paper from '@material-ui/core/Paper';
 
 const useStyles = makeStyles((theme) => ({
+  root: {
+    maxWidth: 1000,
+    height: 550,
+    margin: theme.spacing(2),
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2)
+  },
   grid: {
     height: '100%'
   },
   box: {
-    height: '100%'    
-  },
-  root: {
-    borderWidth: 2,
-    borderStyle: "solid",
-    borderColor: theme.palette.grey[900],
-    borderTopLeftRadius: theme.shape.borderRadius * 1.5,
-    borderTopRightRadius: theme.shape.borderRadius * 1.5
+    height: '100%'
   }
 }));
 
 function Gameboard(props) {
   const classes = useStyles();
-  const categoryCards = props.categories.map((category, ind) => {
-    let borders = [];
-    if(ind === 0){
-      borders.push('left');
-    }
-    if(ind === props.categories.length - 1){
-      borders.push('right');
-    }
-    return <CategoryCard name={category.name} comments={category.comments} key={category.name} 
-      borders={borders}/>
-  });
-  const valueCards = props.values.map((row, rowInd) => {
-    return <Grid item xs={12} key={rowInd + 1}>
-      <Box className={classes.box} display="flex" justifyContent="center">
-        {row.map((pair, ind) => {
-          let index = (rowInd * 6) + ind;
-          return <ValueCard value={pair[0]} onClick={props.handleClick} index={index}
-            active={props.active} key={index} status={pair[1]} />
-        })}
-      </Box>
+
+  const rows = props.values.map((row, rowInd) =>
+    <Grid item xs={12} key={rowInd}>
+      {rowInd !== 0 ? <Divider /> : false}
+      <CategoryCard values={row} index={rowInd} name={props.categories[rowInd].name}
+        active={props.active} click={props.handleClick} />
     </Grid>
-  });
+  );
 
   return (
-    <Box className={classes.root}>
-      <Grid container justify="center" className={classes.grid}>
-        <Grid item xs={12}>
-          <Box className={classes.box} display="flex" justifyContent="center">
-            {categoryCards}
-          </Box>
-        </Grid>
-        {valueCards}
+    <Paper className={classes.root} elevation={3}>
+      <Grid container className={classes.grid}>
+        {rows}
       </Grid>
-    </Box>
+    </Paper>
   );
 }
 export default Gameboard;

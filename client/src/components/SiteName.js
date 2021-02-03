@@ -15,7 +15,7 @@ function SiteName() {
   const classes = useStyles();
 
   return (
-    <Box className={classes.root} p={2} mb={8}>
+    <Box className={classes.root} p={2} mb={2}>
       <Typography className={classes.text} variant="h5">
         Wisenheimer
       </Typography>

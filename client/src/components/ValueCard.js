@@ -1,23 +1,17 @@
 import { Typography } from '@material-ui/core';
-import Paper from '@material-ui/core/Paper';
+import Button from '@material-ui/core/Button';
+import Box from '@material-ui/core/Box';
 import { makeStyles } from "@material-ui/core/styles";
+import clsx from  'clsx';
 
 const useStyles = makeStyles((theme) => ({
-  root: {
-    height: '100%',
-    width: '100%',
-    borderRadius: '0px',
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    cursor: (props) =>
-      props.value && props.active ? "pointer" : "default",
-    background: (props) => props.status === 'unselected' ? theme.palette.primary.main :
-      theme.palette.primary.dark,
-    color: theme.palette.primary.contrastText,
-    borderWidth: 2,
-    borderStyle: "solid",
-    borderColor: theme.palette.grey[900]
+  sizing: {
+    height: 50,
+    width: 100,
+  },
+  selected: {
+    borderColor: (props) =>  props.status === 'selected' ? theme.palette.primary.dark : false,
+    background: (props) => props.status === 'selected' ? theme.palette.primary.ultraLight : false
   }
 }));
 
@@ -26,25 +20,24 @@ function ValueCard(props) {
 
   function handleClick() {
     if(props.value && props.active){
-      props.onClick(props.index);
+      props.click(props.index);
     }
   }
 
-  var text = '';
-  if(props.value){
-    if(props.status === 'double'){
-      text = 'Daily Double';
-    } else{
-      text = '$' + props.value;
-    }
-  }
+  const button = 
+    <Button className={clsx(classes.sizing, classes.selected)} variant="outlined" color="primary" 
+      onClick={handleClick}>
+      <Typography variant="h5">
+        {'$' + props.value}
+      </Typography>
+    </Button>
+
+  const missing =
+    <Box className={classes.sizing}>
+    </Box>
 
   return (
-    <Paper className={classes.root} onClick={handleClick}>
-      <Typography variant="h5">
-        {text}
-      </Typography>
-    </Paper>
+    props.value ? button : missing
   );
 }
 export default ValueCard;

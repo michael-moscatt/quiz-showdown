@@ -6,35 +6,47 @@ import Typography from '@material-ui/core/Typography';
 import AnswerModule from './AnswerModule';
 import { makeStyles } from "@material-ui/core/styles";
 import parse from 'html-react-parser';
-import DigitalTimer from './DigitalTimer';
 import VisualTimer from './VisualTimer';
 import WagerDialog from './WagerDialog';
+import ValueCard from './ValueCard.js';
+import Divider from '@material-ui/core/Divider';
+import Box from '@material-ui/core/Box';
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    width: '100%',
-    height: 400
+    width: 850,
+    height: 450,
+    marginBottom: theme.spacing(2),
+    padding: theme.spacing(2)
   },
-  container: {
-    height: '100%'
+  full: {
+    height: '100%',
+    weight: '100%'
   },
   title: {
-    height: '20%',
-    textAlign: 'center',
-    padding: theme.spacing(3),
+    paddingBottom: theme.spacing(2),
+    paddingRight: theme.spacing(2),
+    paddingLeft: theme.spacing(2),
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center"
   },
-  bar: {
-    height: '5%'
+  paperHolder: {
+    display: "flex",
+    justifyContent: "center",
   },
   question: {
-    height: '50%',
-    paddingLeft: theme.spacing(15),
-    paddingRight: theme.spacing(15),
-    paddingTop: theme.spacing(10),
-    paddingTBottom: theme.spacing(10),
+    height: 250,
+    display: "flex",
+    alignItems: "flex-start",
+    paddingLeft: theme.spacing(10),
+    paddingRight: theme.spacing(10),
+    paddingTop: theme.spacing(4),
+    paddingBottom: theme.spacing(2),
   },
-  answer: {
-    height: '25%'
+  timer: {
+    display: "flex",
+    justifyContent: "center",
   }
 }));
 
@@ -47,7 +59,7 @@ function QuestionCard(props){
   const [timeTotal, setTimeTotal] = useState(null);
 
   const [title, setTitle] = 
-    useState(props.value ? props.category + ' ' + props.value : props.category);
+    useState(props.category);
   const [body, setBody] = useState('');
 
   const [wagerOpen, setWagerOpen] = useState(false);
@@ -133,31 +145,31 @@ function QuestionCard(props){
   const timeFraction = (timeLeft / timeTotal) * 100;
     
   return (
-    <Grid container justify="center">
-      <Grid item xs={12} sm={11} md={10} lg={8}>
+    <Grid container>
+      <Grid item className={classes.timer} xs={12}>
+        <VisualTimer fraction={timeFraction} />
+      </Grid>
+      <Grid item className={classes.paperHolder} xs={12}>
         <Paper className={classes.root} >
-          <Grid container className={classes.container} justify="center">
-            <Grid item className={classes.title} xs={12}>
-              <Grid container>
-                <Grid item xs={11}>
-                  <Typography variant="h4">
-                    {title}
-                  </Typography>
-                </Grid>
-                <Grid item xs={1}>
-                  {startDate && <DigitalTimer time={timeLeft} />}
-                </Grid>
-              </Grid>
-            </Grid>
-            <Grid item className={classes.bar} xs={12}>
-              {<VisualTimer fraction={timeFraction} />}
+          <Grid container className={classes.full}>
+            <Grid item className={classes.test} xs={12}>
+              <Box className={classes.title}>
+                <Typography variant="h5">
+                  {title}
+                </Typography>
+                {props.value !== null && <ValueCard value={props.value} status={'unselected'}
+                  click={false} index={0} active={false} />}
+              </Box>
+              <Divider />
             </Grid>
             <Grid item className={classes.question} xs={12}>
-              <Typography variant="h5">
-                {body}
-              </Typography>
+              <Box className={classes.question}>
+                <Typography variant="h6">
+                  {body}
+                </Typography>
+              </Box>
               <WagerDialog open={wagerOpen} handleClose={handleWagerClose}
-                  max={wagerMax} handlePlaceWager={handlePlaceWager} title={"Final Round"}/>
+                max={wagerMax} handlePlaceWager={handlePlaceWager} title={"Final Round"} />
             </Grid>
             <Grid item className={classes.answer} xs={12}>
               <AnswerModule />

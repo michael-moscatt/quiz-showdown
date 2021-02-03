@@ -33,12 +33,10 @@ const TIME_MEDIUM_WAIT = 4000;
 const TIME_AFTER_Q_ENDS = 7000; // Time after question ends before buzzing is disallowed
 const TIME_AFTER_Q_ENDS_DD = 10000; // Time after a question ends before buzzing is disallowed DD
 const TIME_LOCKOUT = 250; // Lockout period for an illegal buzz
-const TIME_TO_ANSWER = 7000; // Time player has to answer after buzzing
+const TIME_TO_ANSWER = 70000; // Time player has to answer after buzzing
 const TIME_AFTER_SELECTION = 1500; // Time after player selects question before it's read
 const TIME_DISPLAY_ANSWER = 3000; // How long to reveal the answer for
-const TIME_BEFORE_REQUEST_FINAL_WAGER = 2000; // Time before requesting final wagers
 const TIME_FINAL_ROUND = 30000; // Time for final round answers
-const TIME_AFTER_FINAL_ROUND_BEFORE_REVEALS = 2000; // Time after final round before showing answers
 const TIME_BETWEEN_FINAL_REVEALS = 8000; // Time between revealing each players final answer / score
 var dataObj;
 var matchInfo = {}; // seasonNumber -> [matchInfoObj]
@@ -896,7 +894,7 @@ function startFinal(room){
         if(!room.users.some(user => !(user.id in room.game.finalWagers))){
             transmitFinalQuestion(room);
         }
-    }, TIME_BEFORE_REQUEST_FINAL_WAGER);
+    }, TIME_SMALL_WAIT);
 }
 
 // Transmits the final question to the room
@@ -952,7 +950,7 @@ function scoreFinalAnswers(room){
     io.to(room.name).emit('remove-answer-input');
     setTimeout(() => {
         sendFinalAnswers(room, finalInfo);
-    }, TIME_AFTER_FINAL_ROUND_BEFORE_REVEALS)
+    }, TIME_SMALL_WAIT)
 
 }
 
@@ -1007,18 +1005,20 @@ function returnToLobby(room){
 // Gets the question values for a given room, pairing with a status
 // If the index is given (not null), it pairs that index with the given type
 // If index is not given, it pairs all values with 'unselected'
-// [[200, 200, 200...], [400, null, 400], ...]
+// Note that this groups by category, unlike getValuesList
+// [[[200, 'unselected'], [400, 'unselected'], [600, 'unselected'], ...]]
 function getValues(room, index, type = 'unselected'){
     var values = [];
-    for(i = 0;i < 5; i++){
+
+    for(i = 0; i < 6; i++){
         var row = [];
-        for(j=0;j<6;j++){
-            let total = (i*6)+j;
-            let defType = 'unselected';
-            if(index != null && total==index){
-                defType = type;
+        for(j=0;j<5;j++){
+            absoluteIndex = (j * 6) + i;
+            let defaultType = 'unselected';
+            if(index != null && absoluteIndex==index){
+                defaultType = type;
             }
-            row.push([room.game.values[total], defType]);
+            row.push([room.game.values[absoluteIndex], defaultType]);
         }
         values.push(row);
     }
@@ -1106,4 +1106,34 @@ function changeTurn(user, room){
 // Load configuration file based on current mode
 function loadConfigFile(fileName, env){
     return JSON.parse(fs.readFileSync(path.join(__dirname, fileName)))[env];
+}
+
+// Runs through all matches to determine some metric
+function metric(){
+    var longest = "";
+    let longestSeason = 0;
+    let longestMatch = 0;
+    Object.keys(dataObj).forEach(key => {
+        let season = dataObj[key];
+        season.forEach(match => {
+            let frames = match["frames"];
+            frames["single"].forEach(cat => {
+                if(cat["name"].length > longest.length){
+                    longest = cat["name"];
+                    longestSeason = key;
+                    longestMatch = match["id"];
+                }
+            });
+            frames["double"].forEach(cat => {
+                if(cat["name"].length > longest.length){
+                    longest = cat["name"];
+                    longestSeason = key;
+                    longestMatch = match["id"];
+                }
+            });
+        });
+    });
+    console.log("Longest is: " + longest);
+    console.log("Season: " + longestSeason);
+    console.log("Match: " + longestMatch);
 }

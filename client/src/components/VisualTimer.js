@@ -1,20 +1,20 @@
 import { makeStyles } from "@material-ui/core/styles";
 import Box from '@material-ui/core/Box';
-import Paper from '@material-ui/core/Paper';
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    height: 20,
+    width: 800,
+    height: 10,
     align: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingLeft: theme.spacing(5), 
-    paddingRight: theme.spacing(5)
+    justifyContent: "flex-start",
+    alignItems: "flex-end"
   },
   timer: {
-    height: 7,
+    height: 10,
     width: fraction => `${fraction}%`,
-    backgroundColor: theme.palette.primary.main
+    backgroundColor: theme.palette.primary.light,
+    borderTopLeftRadius: theme.shape.borderRadius,
+    borderTopRightRadius: theme.shape.borderRadius,
   }
 }));
 
@@ -23,12 +23,12 @@ function VisualTimer(props){
   const classes = useStyles(fraction);
 
   const timer = 
-    <Paper className={classes.timer}>
-   </Paper>
+    <Box className={classes.timer}>
+    </Box>
 
   return (
     <Box className={classes.root}>
-      {!props.fraction ? <hr></hr> : timer}
+      {props.fraction ? timer : false}
     </Box>
   );
 }
