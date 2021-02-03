@@ -5,20 +5,25 @@ import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemAvatar from '@material-ui/core/ListItemAvatar';
 import ListItemText from '@material-ui/core/ListItemText';
-import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
-import IconButton from '@material-ui/core/IconButton';
 import Avatar from '@material-ui/core/Avatar';
 import StarIcon from '@material-ui/icons/Star';
-import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
 import PersonIcon from '@material-ui/icons/Person';
-import CardContent from '@material-ui/core/CardContent';
-import CardHeader from '@material-ui/core/CardHeader';
-import Card from '@material-ui/core/Card';
+import Divider from '@material-ui/core/Divider';
+import Paper from '@material-ui/core/Paper';
+import Typography from '@material-ui/core/Typography';
 import { makeStyles } from "@material-ui/core/styles";
 
 const useStyles = makeStyles((theme) => ({
-  card: {
-    minHeight: 100
+  root: {
+    padding: theme.spacing(2),
+    minHeight: 154
+  },
+  title: {
+    textAlign: "center"
+  },
+  icon: {
+    backgroundColor: theme.palette.primary.light,
+    color: theme.palette.common.white
   }
 }));
 
@@ -53,14 +58,19 @@ function LobbyInfo(){
   useEffect(() => {socket.emit('request-usernames')},[socket]);
 
   return (
-    <Card>
-      <CardContent className={classes.card}>
-        <CardHeader title={"Room Code: " + roomName} />
+    <Paper className={classes.root} >
+      <Box>
+        <Box className={classes.title}>
+          <Typography variant="h5">
+            {"Room Code: " + roomName}
+          </Typography>
+        </Box>
+        <Divider />
         <Box>
           <List>
             <ListItem key={host}>
               <ListItemAvatar>
-                <Avatar>
+                <Avatar className={classes.icon}>
                   <StarIcon />
                 </Avatar>
               </ListItemAvatar>
@@ -69,25 +79,20 @@ function LobbyInfo(){
               />
             </ListItem>
             {players.map((player) =>
-              (<ListItem key={player}>
-                <ListItemAvatar>
-                  <Avatar>
-                    <PersonIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={player}
-                />
-                <ListItemSecondaryAction>
-                  <IconButton edge="end" aria-label="make-host">
-                    <ArrowUpwardIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>))}
+            (<ListItem key={player}>
+              <ListItemAvatar>
+                <Avatar className={classes.icon}>
+                  <PersonIcon />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText
+                primary={player}
+              />
+            </ListItem>))}
           </List>
         </Box>
-      </CardContent>
-    </Card>
+      </Box>
+    </Paper>
   )
 }
 export default LobbyInfo;

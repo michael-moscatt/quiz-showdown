@@ -40,7 +40,21 @@ function ScoreCard(props) {
     socket.emit('host-override', props.name, type);
   }
 
-  const cardText = props.score < 0 ? `-$${props.score*-1}` : `$${props.score}`
+  const cardText = props.score < 0 ? `-$${props.score * -1}` : `$${props.score}`;
+
+  const addButton =
+    <Tooltip title="Give credit for last question">
+      <IconButton className={classes.button} onClick={() => changePoints('add')}>
+        <AddCircleIcon />
+      </IconButton>
+    </Tooltip>
+
+  const subButton =
+    <Tooltip title="Remove credit for last question">
+      <IconButton className={classes.button} onClick={() => changePoints('sub')}>
+        <RemoveCircleIcon />
+      </IconButton>
+    </Tooltip>
 
   return (
     <Box className={classes.root}>
@@ -62,21 +76,11 @@ function ScoreCard(props) {
             <Grid item xs={12}>
               <Box className={classes.score} display="flex" justifyContent="space-around">
 
-                <Tooltip title="Remove credit for last question">
-                  <IconButton className={classes.button} onClick={() => changePoints('sub')}>
-                    <RemoveCircleIcon />
-                  </IconButton>
-                </Tooltip>
-
+                {props.isHost && subButton}
                 <Typography variant="h5">
                   {cardText}
                 </Typography>
-
-                <Tooltip title="Give credit for last question">
-                  <IconButton className={classes.button} onClick={() => changePoints('add')}>
-                    <AddCircleIcon />
-                  </IconButton>
-                </Tooltip>
+                {props.isHost && addButton}
 
               </Box>
             </Grid>
