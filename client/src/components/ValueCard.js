@@ -11,7 +11,7 @@ const useStyles = makeStyles((theme) => ({
   },
   selected: {
     borderColor: (props) =>  props.status === 'selected' ? theme.palette.primary.dark : false,
-    background: (props) => props.status === 'selected' ? theme.palette.primary.ultraLight : false
+    background: (props) => props.status === 'selected' ? theme.palette.primary.lighter : false
   }
 }));
 

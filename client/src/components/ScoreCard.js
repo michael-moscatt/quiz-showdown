@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from "@material-ui/core/styles";
 import Grid from '@material-ui/core/Grid';
 import TurnIndicator from './TurnIndicator';
 import Box from '@material-ui/core/Box';
+import AddCircleIcon from '@material-ui/icons/AddCircle';
+import RemoveCircleIcon from '@material-ui/icons/RemoveCircle';
+import IconButton from '@material-ui/core/IconButton';
+import Tooltip from '@material-ui/core/Tooltip';
+import { SocketContext } from '../context/socket-context';
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    minWidth: 200
+    width: 250
   },
   full: {
     width: '100%',
@@ -21,11 +26,19 @@ const useStyles = makeStyles((theme) => ({
   },
   score: {
     marginBottom: theme.spacing(2) 
+  },
+  button: {
+    color: theme.palette.secondary.light
   }
 }));
 
 function ScoreCard(props) {
   const classes = useStyles();
+  const socket = useContext(SocketContext);
+
+  function changePoints(type){
+    socket.emit('host-override', props.name, type);
+  }
 
   const cardText = props.score < 0 ? `-$${props.score*-1}` : `$${props.score}`
 
@@ -47,10 +60,24 @@ function ScoreCard(props) {
               </Box>
             </Grid>
             <Grid item xs={12}>
-              <Box className={classes.score} display="flex" justifyContent="center">
+              <Box className={classes.score} display="flex" justifyContent="space-around">
+
+                <Tooltip title="Remove credit for last question">
+                  <IconButton className={classes.button} onClick={() => changePoints('sub')}>
+                    <RemoveCircleIcon />
+                  </IconButton>
+                </Tooltip>
+
                 <Typography variant="h5">
                   {cardText}
                 </Typography>
+
+                <Tooltip title="Give credit for last question">
+                  <IconButton className={classes.button} onClick={() => changePoints('add')}>
+                    <AddCircleIcon />
+                  </IconButton>
+                </Tooltip>
+
               </Box>
             </Grid>
           </Grid>

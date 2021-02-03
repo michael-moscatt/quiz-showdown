@@ -12,7 +12,7 @@ const useStyles = makeStyles((theme) => ({
   timer: {
     height: 10,
     width: fraction => `${fraction}%`,
-    backgroundColor: theme.palette.primary.light,
+    backgroundColor: theme.palette.secondary.main,
     borderTopLeftRadius: theme.shape.borderRadius,
     borderTopRightRadius: theme.shape.borderRadius,
   }

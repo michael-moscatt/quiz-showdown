@@ -3,23 +3,17 @@ import { createMuiTheme } from "@material-ui/core/styles";
 let myTheme = createMuiTheme({
   palette: {
     primary: {
-      main: "#3f51b5",
-      ultraLight: "#dadef1",
+      main: "#4570a1",
+      lighter: "#b8cbe0",
+      lightest: "#dbe5f0",
+      contrastText: "#f4f7fa"
+    },
+    secondary: {
+      main: "#4570a1"
     }
   }
 });
 
-myTheme.palette.background.default = myTheme.palette.grey[100];
-
-// Set a sizing for categories
-// myTheme.typography.h6 = {
-//   fontSize: '0.8rem',
-//   [myTheme.breakpoints.up('md')]: {
-//     fontSize: '1.0rem',
-//   },
-//   [myTheme.breakpoints.up('lg')]: {
-//     fontSize: '1.2rem',
-//   },
-// };
+myTheme.palette.background.default = myTheme.palette.grey[200];
 
 export default myTheme;

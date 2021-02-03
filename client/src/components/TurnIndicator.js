@@ -4,7 +4,7 @@ const useStyles = makeStyles((theme) => ({
   root: {
     width: 100,
     height: 30,
-    backgroundColor: theme.palette.primary.light,
+    backgroundColor: theme.palette.secondary.light,
     color: theme.palette.primary.contrastText,
     display: "flex",
     alignItems: "center",
