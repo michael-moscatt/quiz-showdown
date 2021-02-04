@@ -41,7 +41,11 @@ function WagerDialog(props){
   };
 
   return (
-    <Dialog open={props.open} onClose={props.handleClose}>
+    <Dialog 
+      open={props.open} 
+      onClose={props.handleClose} 
+      disableBackdropClick
+      disableEscapeKeyDown>
       <DialogTitle id="wager-dailog-title">{props.title}</DialogTitle>
       <DialogContent>
         <Grid container spacing={2} alignItems="center">

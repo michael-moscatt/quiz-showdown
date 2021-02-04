@@ -43,6 +43,7 @@ const useStyles = makeStyles((theme) => ({
     paddingRight: theme.spacing(10),
     paddingTop: theme.spacing(4),
     paddingBottom: theme.spacing(2),
+    color: theme.palette.grey[800]
   },
   timer: {
     display: "flex",
