@@ -8,10 +8,11 @@ const useStyles = makeStyles((theme) => ({
   sizing: {
     height: 50,
     width: 100,
+    textTransform: "none"
   },
   selected: {
-    borderColor: (props) =>  props.status === 'selected' ? theme.palette.primary.dark : false,
-    background: (props) => props.status === 'selected' ? theme.palette.primary.lighter : false
+    borderColor: (props) =>  props.status !== 'unselected' ? theme.palette.primary.dark : false,
+    background: (props) => props.status !== 'unselected' ? theme.palette.primary.lighter : false
   }
 }));
 
@@ -24,11 +25,13 @@ function ValueCard(props) {
     }
   }
 
+  const text = props.status === 'double' ? 'Double' : '$' + props.value;
+
   const button = 
     <Button className={clsx(classes.sizing, classes.selected)} variant="outlined" color="primary" 
       onClick={handleClick}>
       <Typography variant="h5">
-        {'$' + props.value}
+        {text}
       </Typography>
     </Button>
 

@@ -632,14 +632,16 @@ function setUpQuestion(user, room, index){
 
 // Gets the player's wager for a DD
 function getDailyDoubleWager(room){
-
     // Figure out who gets to wager, inform them the max they can wager
     let question = room.game.question;
     let user = question.selector;
     let socket = user.socket;
     let maxOnBoard = room.game.part === 'single' ? 1000 : 2000;
     let max = Math.max(room.game.scores[user.id], maxOnBoard);
-    socket.emit('daily-double', max);
+
+    setTimeout(() => {
+        socket.emit('daily-double-wager', max);
+    }, TIME_SMALL_WAIT)
 
     // Lockout all other users, since DD is only answerable by the selector
     room.users.forEach((roomUser) => {
@@ -674,9 +676,12 @@ function startQuestion(room){
         room.game.questionActive = true;
     }
 
-    // Start the transmission of the question, sending a new word each (room.settings.delay)
-    question.transmissionTimer = 
-        setInterval(transmitQuestion, room.settings.delay, room);
+    // After a delay, start the transmission of the question, 
+    // sending a new word each (room.settings.delay)
+    setTimeout(() => {
+        question.transmissionTimer =
+            setInterval(transmitQuestion, room.settings.delay, room);
+    }, 1000)
 }
 
 // Transmits the question to the given room, taking into account if the question is a daily double
@@ -996,7 +1001,6 @@ function returnToLobby(room){
     room.game = new Game();
     room.state = 'lobby';
     room.users.forEach(user => {
-        console.log("Telling: " + user.name);
         setLobbyListeners(user, room);
         user.socket.emit('join-lobby');
     });

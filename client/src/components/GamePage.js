@@ -27,7 +27,7 @@ function GamePage() {
     socket.on('question-values', vals => setValues(vals));
     socket.on('turn-name', name => setTurnName(name));
     socket.on('name', name => setName(name));
-    socket.on('daily-double', (max) => {
+    socket.on('daily-double-wager', (max) => {
       setWagerMax(max);
       setWagerDialogOpen(true);
     });
@@ -52,7 +52,7 @@ function GamePage() {
       socket.off('question-values');
       socket.off('turn-name');
       socket.off('name');
-      socket.off('daily-double');
+      socket.off('daily-double-wager');
       socket.off('question-info')
       socket.off('question-over');
       socket.off('is-host');
