@@ -17,7 +17,7 @@ function SiteName() {
   return (
     <Box className={classes.root} p={2} mb={2}>
       <Typography className={classes.text} variant="h5">
-        Wisenheimer
+        QuizAce
       </Typography>
     </Box>
   );
