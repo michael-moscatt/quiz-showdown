@@ -7,7 +7,11 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: theme.palette.primary.main
   },
   text: {
-    color: theme.palette.primary.contrastText
+    color: theme.palette.primary.lightest
+  },
+  flair: {
+    color: theme.palette.primary.contrastText,
+    fontStyle: 'italic'
   }
 }));
 
@@ -17,7 +21,7 @@ function SiteName() {
   return (
     <Box className={classes.root} p={2} mb={2}>
       <Typography className={classes.text} variant="h5">
-        QuizAce
+        Quiz<span className={classes.flair}>Showdown</span>
       </Typography>
     </Box>
   );
