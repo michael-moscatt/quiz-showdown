@@ -6,6 +6,7 @@ import Paper from '@material-ui/core/Paper';
 import { makeStyles } from "@material-ui/core/styles";
 import TextField from '@material-ui/core/TextField';
 import JoinDialog from './JoinDialog.js';
+import ErrorDialog from './ErrorDialog.js';
 import EmojiEventsIcon from '@material-ui/icons/EmojiEvents';
 
 const useStyles = makeStyles((theme) => ({
@@ -28,9 +29,10 @@ function MainMenu(){
   const socket = useContext(SocketContext);
 
   const [isError, setIsError] = useState(false);
-
   const [username, setUsername] = useState('');
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorDialogText, setErrorDialogText] = useState('');
   const input = useRef(null);
 
   function handleUsernameChange(e) {
@@ -63,11 +65,16 @@ function MainMenu(){
     input.current.focus();
   }
 
+  function handleErrorDialogClose() {
+    setErrorDialogOpen(false);
+  }
+
   function setEventListeners() {
     socket.on('join-error',
       (error) => {
-        // todo: Inform user error has occured
-        console.log(error);
+        setJoinDialogOpen(false);
+        setErrorDialogText(error);
+        setErrorDialogOpen(true);
     });
     return function removeEventListeners() {
       socket.off('join-error');
@@ -101,7 +108,16 @@ function MainMenu(){
             onClick={handleJoinDialogOpen}>
             Join
           </Button>
-          <JoinDialog open={joinDialogOpen} handleClose={handleJoinDialogClose} username={username} />
+          <JoinDialog 
+            open={joinDialogOpen} 
+            handleClose={handleJoinDialogClose} 
+            username={username} 
+          />
+          <ErrorDialog 
+            open={errorDialogOpen} 
+            handleClose={handleErrorDialogClose} 
+            text={errorDialogText} 
+          />
         </Box>
       </Paper>
     </Box>

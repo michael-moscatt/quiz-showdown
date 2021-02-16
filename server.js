@@ -112,14 +112,14 @@ function setMenuListeners(user, room){
         var username = joinObj.username.substring(0, 16);
         room = rooms[roomName];
         if(!(roomName in rooms)){
-            response = "invalid";
+            response = "Room not found.";
         } else if(!room['state'] == 'lobby'){
-            response = "ingame";
+            response = "Please wait for current round to end.";
         } else if(room['users'].length >= ROOM_LIMIT - 1){
-            response = "full";
+            response = "Room is full.";
         } else if(room['users'].map(OneUser => OneUser.name).includes(username)
             || username === room['host'].name){
-            response = "name taken";
+            response = "Try another name, that one's taken.";
         } else {
             user.name = username.substring(0, 16);
             response = "ok";
