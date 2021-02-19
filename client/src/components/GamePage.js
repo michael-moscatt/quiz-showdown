@@ -21,6 +21,7 @@ function GamePage() {
   const [wagerDialogOpen, setWagerDialogOpen] = useState(false);
   const [wagerMax, setWagerMax] = useState(0);
   const [isHost, setIsHost] = useState(false);
+  const [centerAnswer, setCenterAnswer] = useState(false);
 
   function setEventListeners() {
     socket.on('categories', cat => setCategories(cat));
@@ -43,6 +44,7 @@ function GamePage() {
     });
     socket.on('is-host', (isHost) => setIsHost(isHost));
     socket.on('start-final', (category) => {
+      setCenterAnswer(true);
       setCategory(category);
       setValue(null);
       setMode('question');
@@ -57,7 +59,6 @@ function GamePage() {
       socket.off('question-over');
       socket.off('is-host');
       socket.off('start-final');
-      socket.off('final-time-up');
     }
   }
   useEffect(setEventListeners, [socket]);
@@ -85,7 +86,7 @@ function GamePage() {
   const question =
     <Grid item sm={12} md={10} lg={7} xl={5}>
       <Box display="flex" justifyContent="center">
-        <QuestionCard category={category} value={value} />
+        <QuestionCard category={category} value={value} center={centerAnswer} />
       </Box>
     </Grid>
 

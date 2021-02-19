@@ -988,9 +988,9 @@ function endGame(room, finalInfo) {
 
     let highestScore = Math.max(...finalInfo.map(obj => obj.finalScore));
     let winners = finalInfo.filter(obj => obj.finalScore == highestScore).map(obj => obj.name);
-    let auxVerb = winners.length > 1 ? " have " : " has ";
     let names = winners.join(" & ");
-    let winString = names + auxVerb + "won the match with $" + highestScore + "!";
+    highestScoreSymbol = highestScore < 0 ? "-$" : "$";
+    let winString = names + " with " + highestScoreSymbol + Math.abs(highestScore) + "!";
     io.to(room.name).emit("winners", winString);
 
     setTimeout(returnToLobby, TIME_MEDIUM_WAIT, room);

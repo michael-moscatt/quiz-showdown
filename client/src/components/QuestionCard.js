@@ -37,8 +37,20 @@ const useStyles = makeStyles((theme) => ({
   },
   question: {
     height: 250,
+    width: '100%',
     display: "flex",
-    alignItems: "flex-start",
+    alignItems: props => props.center ? "center" : "flex-start",
+    paddingLeft: theme.spacing(10),
+    paddingRight: theme.spacing(10),
+    paddingTop: theme.spacing(4),
+    paddingBottom: theme.spacing(2),
+    color: theme.palette.grey[800],
+    justifyContent: "center"
+  },
+  questionGrid: {
+    height: 250,
+    display: "flex",
+    alignItems: props => props.center ? "center" : "flex-start",
     paddingLeft: theme.spacing(10),
     paddingRight: theme.spacing(10),
     paddingTop: theme.spacing(4),
@@ -52,7 +64,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 function QuestionCard(props){
-  const classes = useStyles();
+  const classes = useStyles(props);
   const socket = useContext(SocketContext);
 
   const [startDate, setStartDate] = useState(null);
@@ -83,6 +95,7 @@ function QuestionCard(props){
     });
     socket.on('final-time-up', (msg) => {
       setTitle(msg);
+      setBody('');
     });
     socket.on('final-info', (obj) => {
       setBody('');
@@ -108,7 +121,7 @@ function QuestionCard(props){
       }, 6500);
     });
     socket.on('winners', (winString) => {
-      setTitle('');
+      setTitle('Our winner is:');
       setBody(winString);
     });
 
@@ -153,7 +166,7 @@ function QuestionCard(props){
       <Grid item className={classes.paperHolder} xs={12}>
         <Paper className={classes.root} >
           <Grid container className={classes.full}>
-            <Grid item className={classes.test} xs={12}>
+            <Grid item xs={12}>
               <Box className={classes.title}>
                 <Typography variant="h5">
                   {title}
@@ -163,7 +176,7 @@ function QuestionCard(props){
               </Box>
               <Divider />
             </Grid>
-            <Grid item className={classes.question} xs={12}>
+            <Grid item className={classes.questionGrid} xs={12}>
               <Box className={classes.question}>
                 <Typography variant="h6">
                   {body}
