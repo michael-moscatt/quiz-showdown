@@ -25,7 +25,6 @@ cd client
 npm install
 cd ..
 npm run dev
-
 ```
 The site is then accessible through the browser at 'localhost:3000'
 
