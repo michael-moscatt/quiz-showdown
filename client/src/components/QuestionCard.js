@@ -39,13 +39,13 @@ const useStyles = makeStyles((theme) => ({
     height: 250,
     width: '100%',
     display: "flex",
-    alignItems: props => props.center ? "center" : "flex-start",
+    justifyContent: props => props.center ? "center" : "flex-start",
     paddingLeft: theme.spacing(10),
     paddingRight: theme.spacing(10),
     paddingTop: theme.spacing(4),
     paddingBottom: theme.spacing(2),
     color: theme.palette.grey[800],
-    justifyContent: "center"
+    alignItems: props => props.center ? "center" : "flex-start"
   },
   questionGrid: {
     height: 250,

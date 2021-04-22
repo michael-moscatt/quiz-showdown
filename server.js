@@ -472,7 +472,7 @@ function Room(user, roomName){
     this.settings = {
         interrupt: false,
         override: true,
-        delay: 250
+        delay: 300
     };
 }
 
