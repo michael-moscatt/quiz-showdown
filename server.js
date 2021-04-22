@@ -975,9 +975,16 @@ function sendFinalAnswers(room, finalInfo){
 
             setTimeout(sendFinalInfo, TIME_BETWEEN_FINAL_REVEALS);
         } else{
-            endGame(room, finalInfo);
+            revealFinalAnswer(room, finalInfo);
+            
         }
     })();
+}
+
+// Reveal the correct final answer to the players
+function revealFinalAnswer(room, finalInfo){
+    io.to(room.name).emit("correct-final-answer", room.game.question.answer);
+    setTimeout(endGame, TIME_MEDIUM_WAIT, room, finalInfo);
 }
 
 // Announce the winner(s) of the match and their scores

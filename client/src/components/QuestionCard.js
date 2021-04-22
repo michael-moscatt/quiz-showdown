@@ -120,6 +120,10 @@ function QuestionCard(props){
         setBody('$' + obj.finalScore);
       }, 6500);
     });
+    socket.on('correct-final-answer', (answer) => {
+      setTitle('The correct answer is:');
+      setBody(answer);
+    });
     socket.on('winners', (winString) => {
       setTitle('Our winner is:');
       setBody(winString);
@@ -132,6 +136,7 @@ function QuestionCard(props){
       socket.off('request-final-wager');
       socket.off('final-time-up');
       socket.off('final-info');
+      socket.off('correct-final-answer');
       socket.off('winners');
     }
   }
