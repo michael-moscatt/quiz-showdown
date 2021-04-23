@@ -11,6 +11,7 @@ import WagerDialog from './WagerDialog';
 import ValueCard from './ValueCard.js';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
+import clsx from  'clsx';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -60,13 +61,26 @@ const useStyles = makeStyles((theme) => ({
   timer: {
     display: "flex",
     justifyContent: "center",
+  },
+  wrongAnswer: {
+    backgroundColor: "#FF9494"
+  },
+  rightAnswer: {
+    backgroundColor: "#12FF3E"
+  },
+  noAnswer: {
+    backgroundColor: "FFFFFF"
   }
 }));
 
 function QuestionCard(props){
+
+  
+
   const classes = useStyles(props);
   const socket = useContext(SocketContext);
 
+  const [backgroundClass, setBackgroundClass] = useState(classes.noAnswer);
   const [startDate, setStartDate] = useState(null);
   const [curDate, setCurDate] = useState(null);
   const [timeTotal, setTimeTotal] = useState(null);
@@ -128,6 +142,15 @@ function QuestionCard(props){
       setTitle('Our winner is:');
       setBody(winString);
     });
+    socket.on('is-correct', (correctness) => {
+      console.log(correctness);
+      if(correctness){
+        setBackgroundClass(classes.rightAnswer);
+      } else{
+        setBackgroundClass(classes.wrongAnswer);
+      }
+      setTimeout(()=>setBackgroundClass(classes.noAnswer), 250);
+    });
 
     return function removeEventListeners() {
       socket.off('time-clear');
@@ -138,9 +161,11 @@ function QuestionCard(props){
       socket.off('final-info');
       socket.off('correct-final-answer');
       socket.off('winners');
+      socket.off('is-correct');
     }
   }
-  useEffect(setEventListeners, [socket]);
+
+  useEffect(setEventListeners);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -162,6 +187,8 @@ function QuestionCard(props){
 
   const timeLeft = timeTotal - (curDate - startDate);
   const timeFraction = (timeLeft / timeTotal) * 100;
+
+
     
   return (
     <Grid container>
@@ -169,7 +196,7 @@ function QuestionCard(props){
         <VisualTimer fraction={timeFraction} />
       </Grid>
       <Grid item className={classes.paperHolder} xs={12}>
-        <Paper className={classes.root} >
+        <Paper className={clsx(classes.root, backgroundClass)} >
           <Grid container className={classes.full}>
             <Grid item xs={12}>
               <Box className={classes.title}>

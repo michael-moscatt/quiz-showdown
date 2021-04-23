@@ -768,12 +768,20 @@ function playerAnswer(user, room){
     if(correct){
         modifyScore(room, user.id, room.game.question.value);
 
+        // Signal that question was answered correctly
+        io.to(room.name).emit('is-correct', true);
+
         // Give turn to player
         changeTurn(user, room);
-        endQuestion(room);
+        setTimeout(()=>endQuestion(room), 250);
+        
     } else{
         modifyScore(room, user.id, room.game.question.value*-1);
-        cleanupIncorrectPlayerBuzz(room, user.socket);
+
+        // Signal that question was answered incorrectly
+        io.to(room.name).emit('is-correct', false);
+
+        setTimeout(()=> cleanupIncorrectPlayerBuzz(room, user.socket), 250);
     }
 }
 
